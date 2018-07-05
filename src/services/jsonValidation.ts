@@ -8,10 +8,7 @@ import { JSONSchemaService } from './jsonSchemaService';
 import { JSONDocument, IProblem } from '../parser/jsonParser';
 import { TextDocument, Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
 import { ErrorCode, ObjectASTNode, PromiseConstructor, Thenable, LanguageSettings, DocumentLanguageSettings, SeverityLevel } from '../jsonLanguageTypes';
-import * as nls from 'vscode-nls';
 import { JSONSchemaRef, JSONSchema } from '../jsonSchema';
-
-const localize = nls.loadMessageBundle();
 
 export class JSONValidation {
 
@@ -86,7 +83,7 @@ export class JSONValidation {
 			});
 
 			if (typeof commentSeverity === 'number') {
-				let message = localize('InvalidCommentToken', 'Comments are not permitted in JSON.');
+				let message = 'Comments are not permitted in JSON.';
 				jsonDocument.comments.forEach(c => {
 					addProblem(Diagnostic.create(c, message, commentSeverity, ErrorCode.CommentNotPermitted));
 				});

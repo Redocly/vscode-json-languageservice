@@ -20,9 +20,6 @@ import {
 
 import { CompletionItem, CompletionItemKind, CompletionList, TextDocument, Position, Range, TextEdit, InsertTextFormat } from 'vscode-languageserver-types';
 
-import * as nls from 'vscode-nls';
-const localize = nls.loadMessageBundle();
-
 
 export class JSONCompletion {
 
@@ -470,7 +467,7 @@ export class JSONCompletion {
 				label: this.getLabelForValue(value),
 				insertText: this.getInsertTextForValue(value, separatorAfter),
 				insertTextFormat: InsertTextFormat.Snippet,
-				detail: localize('json.suggest.default', 'Default value'),
+				detail: 'Default value',
 			});
 			hasProposals = true;
 		}
@@ -567,7 +564,7 @@ export class JSONCompletion {
 				label: '{}',
 				insertText: this.getInsertTextForGuessedValue({}, separatorAfter),
 				insertTextFormat: InsertTextFormat.Snippet,
-				detail: localize('defaults.object', 'New object'),
+				detail: 'New object',
 				documentation: ''
 			});
 		}
@@ -577,7 +574,7 @@ export class JSONCompletion {
 				label: '[]',
 				insertText: this.getInsertTextForGuessedValue([], separatorAfter),
 				insertTextFormat: InsertTextFormat.Snippet,
-				detail: localize('defaults.array', 'New array'),
+				detail: 'New array',
 				documentation: ''
 			});
 		}

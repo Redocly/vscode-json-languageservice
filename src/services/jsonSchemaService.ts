@@ -12,9 +12,6 @@ import * as Parser from '../parser/jsonParser';
 import { SchemaRequestService, WorkspaceContextService, PromiseConstructor, Thenable, ObjectASTNode } from '../jsonLanguageTypes';
 
 
-import * as nls from 'vscode-nls';
-const localize = nls.loadMessageBundle();
-
 export interface IJSONSchemaService {
 
 	/**
@@ -337,24 +334,24 @@ export class JSONSchemaService implements IJSONSchemaService {
 
 	public loadSchema(url: string): Thenable<UnresolvedSchema> {
 		if (!this.requestService) {
-			let errorMessage = localize('json.schema.norequestservice', 'Unable to load schema from \'{0}\'. No schema request service available', toDisplayString(url));
+			let errorMessage = `Unable to load schema from '${toDisplayString(url)}'. No schema request service available`;
 			return this.promise.resolve(new UnresolvedSchema(<JSONSchema>{}, [errorMessage]));
 		}
 		return this.requestService(url).then(
 			content => {
 				if (!content) {
-					let errorMessage = localize('json.schema.nocontent', 'Unable to load schema from \'{0}\': No content.', toDisplayString(url));
+					let errorMessage = `Unable to load schema from '${toDisplayString(url)}': No content.`;
 					return new UnresolvedSchema(<JSONSchema>{}, [errorMessage]);
 				}
 
 				let schemaContent: JSONSchema = {};
 				let jsonErrors: Json.ParseError[] = [];
 				schemaContent = Json.parse(content, jsonErrors);
-				let errors = jsonErrors.length ? [localize('json.schema.invalidFormat', 'Unable to parse content from \'{0}\': Parse error at offset {1}.', toDisplayString(url), jsonErrors[0].offset)] : [];
+				let errors = jsonErrors.length ? [`Unable to parse content from '${toDisplayString(url)}': Parse error at offset ${jsonErrors[0].offset}`] : [];
 				return new UnresolvedSchema(schemaContent, errors);
 			},
 			(error: any) => {
-				let errorMessage = localize('json.schema.unabletoload', 'Unable to load schema from \'{0}\': {1}', toDisplayString(url), error.toString());
+				let errorMessage = `Unable to load schema from '${toDisplayString(url)}': ${error.toString()}`;
 				return new UnresolvedSchema(<JSONSchema>{}, [errorMessage]);
 			}
 		);
@@ -390,7 +387,7 @@ export class JSONSchemaService implements IJSONSchemaService {
 					}
 				}
 			} else {
-				resolveErrors.push(localize('json.schema.invalidref', '$ref \'{0}\' in \'{1}\' can not be resolved.', path, sourceURI));
+				resolveErrors.push(`$ref '${path}' in '${sourceURI}' can not be resolved.`);
 			}
 		};
 
@@ -402,7 +399,7 @@ export class JSONSchemaService implements IJSONSchemaService {
 			return this.getOrAddSchemaHandle(uri).getUnresolvedSchema().then(unresolvedSchema => {
 				if (unresolvedSchema.errors.length) {
 					let loc = linkPath ? uri + '#' + linkPath : uri;
-					resolveErrors.push(localize('json.schema.problemloadingref', 'Problems loading reference \'{0}\': {1}', loc, unresolvedSchema.errors[0]));
+					resolveErrors.push(`Problems loading reference '${loc}': ${unresolvedSchema.errors[0]}`);
 				}
 				merge(node, unresolvedSchema.schema, uri, linkPath);
 				return resolveRefs(node, unresolvedSchema.schema, uri);

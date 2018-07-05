@@ -14,19 +14,16 @@ import { JSONHover } from './services/jsonHover';
 import { JSONValidation } from './services/jsonValidation';
 
 import { JSONDocumentSymbols } from './services/jsonDocumentSymbols';
-import { parse as parseJSON, JSONDocumentConfig, JSONDocument as InternalJSONDocument, newJSONDocument } from './parser/jsonParser';
+import { parse as parseJSON, JSONDocument as InternalJSONDocument, newJSONDocument } from './parser/jsonParser';
 import { schemaContributions } from './services/configuration';
 import { JSONSchemaService } from './services/jsonSchemaService';
 import { getFoldingRanges } from './services/jsonFolding';
 
 import { format as formatJSON } from 'jsonc-parser';
-import { format } from 'util';
 import {
-	PromiseConstructor, Thenable,
-	SchemaConfiguration, SchemaRequestService,
+	Thenable,
 	ASTNode,
-	Color, ColorInformation, ColorPresentation,
-	ErrorCode, LanguageServiceParams, LanguageSettings, DocumentLanguageSettings, SeverityLevel,
+	Color, ColorInformation, ColorPresentation, LanguageServiceParams, LanguageSettings, DocumentLanguageSettings,
 	FoldingRange, JSONSchema
 } from './jsonLanguageTypes';
 

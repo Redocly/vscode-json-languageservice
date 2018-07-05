@@ -9,11 +9,8 @@ import { JSONSchema, JSONSchemaRef } from '../jsonSchema';
 import * as objects from '../utils/objects';
 import { ASTNode, ObjectASTNode, ArrayASTNode, BooleanASTNode, NumberASTNode, StringASTNode, NullASTNode, PropertyASTNode, JSONPath, ErrorCode } from '../jsonLanguageTypes';
 
-import * as nls from 'vscode-nls';
 import Uri from 'vscode-uri';
 import { TextDocument, Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
-
-const localize = nls.loadMessageBundle();
 
 export interface IRange {
 	offset: number;
@@ -238,7 +235,7 @@ export class ValidationResult {
 			this.enumValues = this.enumValues.concat(validationResult.enumValues);
 			for (let error of this.problems) {
 				if (error.code === ErrorCode.EnumValueMismatch) {
-					error.message = localize('enumWarning', 'Value is not accepted. Valid values: {0}.', this.enumValues.map(v => JSON.stringify(v)).join(', '));
+					error.message = `Value is not accepted. Valid values: ${this.enumValues.map(v => JSON.stringify(v)).join(', ')}.`;
 				}
 			}
 		}
@@ -376,7 +373,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: schema.errorMessage || localize('typeArrayMismatchWarning', 'Incorrect type. Expected one of {0}.', (<string[]>schema.type).join(', '))
+					message: schema.errorMessage || `Incorrect type. Expected one of ${(<string[]>schema.type).join(', ')}.`
 				});
 			}
 		}
@@ -385,7 +382,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: schema.errorMessage || localize('typeMismatchWarning', 'Incorrect type. Expected "{0}".', schema.type)
+					message: schema.errorMessage || `Incorrect type. Expected "${schema.type}".` 
 				});
 			}
 		}
@@ -403,7 +400,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: localize('notSchemaWarning', "Matches a schema that is not allowed.")
+					message: "Matches a schema that is not allowed."
 				});
 			}
 			subMatchingSchemas.schemas.forEach((ms) => {
@@ -451,7 +448,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: 1 },
 					severity: DiagnosticSeverity.Warning,
-					message: localize('oneOfWarning', "Matches multiple schemas when only one must validate.")
+					message:"Matches multiple schemas when only one must validate."
 				});
 			}
 			if (bestMatch !== null) {
@@ -485,7 +482,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
 					code: ErrorCode.EnumValueMismatch,
-					message: schema.errorMessage || localize('enumWarning', 'Value is not accepted. Valid values: {0}.', schema.enum.map(v => JSON.stringify(v)).join(', '))
+					message: schema.errorMessage || `Value is not accepted. Valid values: ${schema.enum.map(v => JSON.stringify(v)).join(', ')}.` 
 				});
 			}
 		}
@@ -497,7 +494,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
 					code: ErrorCode.EnumValueMismatch,
-					message: schema.errorMessage || localize('constWarning', 'Value must be {0}.', JSON.stringify(schema.const))
+					message: schema.errorMessage || `Value must be ${JSON.stringify(schema.const)}.` 
 				});
 				validationResult.enumValueMatch = false;
 			} else {
@@ -525,7 +522,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: localize('multipleOfWarning', 'Value is not divisible by {0}.', schema.multipleOf)
+					message: `Value is not divisible by ${schema.multipleOf}.`
 				});
 			}
 		}
@@ -549,7 +546,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			validationResult.problems.push({
 				location: { offset: node.offset, length: node.length },
 				severity: DiagnosticSeverity.Warning,
-				message: localize('exclusiveMinimumWarning', 'Value is below the exclusive minimum of {0}.', exclusiveMinimum)
+				message: `Value is below the exclusive minimum of ${exclusiveMinimum}.`
 			});
 		}
 		let exclusiveMaximum = getExclusiveLimit(schema.maximum, schema.exclusiveMaximum);
@@ -557,7 +554,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			validationResult.problems.push({
 				location: { offset: node.offset, length: node.length },
 				severity: DiagnosticSeverity.Warning,
-				message: localize('exclusiveMaximumWarning', 'Value is above the exclusive maximum of {0}.', exclusiveMaximum)
+				message: `Value is above the exclusive maximum of ${exclusiveMaximum}.`
 			});
 		}
 		let minimum = getLimit(schema.minimum, schema.exclusiveMinimum);
@@ -565,7 +562,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			validationResult.problems.push({
 				location: { offset: node.offset, length: node.length },
 				severity: DiagnosticSeverity.Warning,
-				message: localize('minimumWarning', 'Value is below the minimum of {0}.', minimum)
+				message: `Value is below the minimum of ${minimum}.`
 			});
 		}
 		let maximum = getLimit(schema.maximum, schema.exclusiveMaximum);
@@ -573,7 +570,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			validationResult.problems.push({
 				location: { offset: node.offset, length: node.length },
 				severity: DiagnosticSeverity.Warning,
-				message: localize('maximumWarning', 'Value is above the maximum of {0}.', maximum)
+				message: `Value is above the maximum of ${maximum}.`
 			});
 		}
 	}
@@ -583,7 +580,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			validationResult.problems.push({
 				location: { offset: node.offset, length: node.length },
 				severity: DiagnosticSeverity.Warning,
-				message: localize('minLengthWarning', 'String is shorter than the minimum length of {0}.', schema.minLength)
+				message: `String is shorter than the minimum length of ${schema.minLength}.`
 			});
 		}
 
@@ -591,7 +588,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			validationResult.problems.push({
 				location: { offset: node.offset, length: node.length },
 				severity: DiagnosticSeverity.Warning,
-				message: localize('maxLengthWarning', 'String is longer than the maximum length of {0}.', schema.maxLength)
+				message: `String is longer than the maximum length of ${schema.maxLength}.`
 			});
 		}
 
@@ -601,7 +598,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: schema.patternErrorMessage || schema.errorMessage || localize('patternWarning', 'String does not match the pattern of "{0}".', schema.pattern)
+					message: schema.patternErrorMessage || schema.errorMessage || `String does not match the pattern of "${schema.pattern}".`
 				});
 			}
 		}
@@ -612,12 +609,12 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				case 'uri-reference': {
 					let errorMessage;
 					if (!node.value) {
-						errorMessage = localize('uriEmpty', 'URI expected.');
+						errorMessage = 'URI expected.'
 					} else {
 						try {
 							let uri = Uri.parse(node.value);
 							if (!uri.scheme && schema.format === 'uri') {
-								errorMessage = localize('uriSchemeMissing', 'URI with a scheme is expected.');
+								errorMessage = 'URI with a scheme is expected.'
 							}
 						} catch (e) {
 							errorMessage = e.message;
@@ -627,7 +624,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 						validationResult.problems.push({
 							location: { offset: node.offset, length: node.length },
 							severity: DiagnosticSeverity.Warning,
-							message: schema.patternErrorMessage || schema.errorMessage || localize('uriFormatWarning', 'String is not a URI: {0}', errorMessage)
+							message: schema.patternErrorMessage || schema.errorMessage || `String is not a URI: ${errorMessage}`
 						});
 					}
 				}
@@ -637,7 +634,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 						validationResult.problems.push({
 							location: { offset: node.offset, length: node.length },
 							severity: DiagnosticSeverity.Warning,
-							message: schema.patternErrorMessage || schema.errorMessage || localize('emailFormatWarning', 'String is not an e-mail address.')
+							message: schema.patternErrorMessage || schema.errorMessage || 'String is not an e-mail address.'
 						});
 					}
 				}
@@ -647,7 +644,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 						validationResult.problems.push({
 							location: { offset: node.offset, length: node.length },
 							severity: DiagnosticSeverity.Warning,
-							message: schema.patternErrorMessage || schema.errorMessage || localize('colorHexFormatWarning', 'Invalid color format. Use #RGB, #RGBA, #RRGGBB or #RRGGBBAA.')
+							message: schema.patternErrorMessage || schema.errorMessage || 'Invalid color format. Use #RGB, #RGBA, #RRGGBB or #RRGGBBAA.'
 						});
 					}
 				}
@@ -682,7 +679,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 					validationResult.problems.push({
 						location: { offset: node.offset, length: node.length },
 						severity: DiagnosticSeverity.Warning,
-						message: localize('additionalItemsWarning', 'Array has too many items according to schema. Expected {0} or fewer.', subSchemas.length)
+						message: `Array has too many items according to schema. Expected ${subSchemas.length} or fewer.`
 					});
 				}
 			}
@@ -709,7 +706,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: schema.errorMessage || localize('requiredItemMissingWarning', 'Array does not contain required item.')
+					message: schema.errorMessage || 'Array does not contain required item.'
 				});
 			}
 		}
@@ -718,7 +715,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			validationResult.problems.push({
 				location: { offset: node.offset, length: node.length },
 				severity: DiagnosticSeverity.Warning,
-				message: localize('minItemsWarning', 'Array has too few items. Expected {0} or more.', schema.minItems)
+				message: `Array has too few items. Expected ${schema.minItems} or more.`
 			});
 		}
 
@@ -726,7 +723,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			validationResult.problems.push({
 				location: { offset: node.offset, length: node.length },
 				severity: DiagnosticSeverity.Warning,
-				message: localize('maxItemsWarning', 'Array has too many items. Expected {0} or fewer.', schema.maxItems)
+				message: `Array has too many items. Expected ${schema.maxItems} or fewer.`
 			});
 		}
 
@@ -739,7 +736,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: localize('uniqueItemsWarning', 'Array has duplicate items.')
+					message: 'Array has duplicate items.'
 				});
 			}
 		}
@@ -763,7 +760,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 					validationResult.problems.push({
 						location: location,
 						severity: DiagnosticSeverity.Warning,
-						message: localize('MissingRequiredPropWarning', 'Missing property "{0}".', propertyName)
+						message: `Missing property "${propertyName}".`
 					});
 				}
 			});
@@ -789,7 +786,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 							validationResult.problems.push({
 								location: { offset: propertyNode.keyNode.offset, length: propertyNode.keyNode.length },
 								severity: DiagnosticSeverity.Warning,
-								message: schema.errorMessage || localize('DisallowedExtraPropWarning', 'Property {0} is not allowed.', propertyName)
+								message: schema.errorMessage || `Property ${propertyName} is not allowed.`
 							});
 						} else {
 							validationResult.propertiesMatches++;
@@ -820,7 +817,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 									validationResult.problems.push({
 										location: { offset: propertyNode.keyNode.offset, length: propertyNode.keyNode.length },
 										severity: DiagnosticSeverity.Warning,
-										message: schema.errorMessage || localize('DisallowedExtraPropWarning', 'Property {0} is not allowed.', propertyName)
+										message: schema.errorMessage || `Property ${propertyName} is not allowed.`
 									});
 								} else {
 									validationResult.propertiesMatches++;
@@ -856,7 +853,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 						validationResult.problems.push({
 							location: { offset: propertyNode.keyNode.offset, length: propertyNode.keyNode.length },
 							severity: DiagnosticSeverity.Warning,
-							message: schema.errorMessage || localize('DisallowedExtraPropWarning', 'Property {0} is not allowed.', propertyName)
+							message: schema.errorMessage || `Property ${propertyName} is not allowed.`
 						});
 					}
 				});
@@ -868,7 +865,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: localize('MaxPropWarning', 'Object has more properties than limit of {0}.', schema.maxProperties)
+					message: `Object has more properties than limit of ${schema.maxProperties}.`
 				});
 			}
 		}
@@ -878,7 +875,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: localize('MinPropWarning', 'Object has fewer properties than the required number of {0}', schema.minProperties)
+					message: `Object has fewer properties than the required number of ${schema.minProperties}` 
 				});
 			}
 		}
@@ -894,7 +891,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 								validationResult.problems.push({
 									location: { offset: node.offset, length: node.length },
 									severity: DiagnosticSeverity.Warning,
-									message: localize('RequiredDependentPropWarning', 'Object is missing property {0} required by property {1}.', requiredProp, key)
+									message: `Object is missing property ${requiredProp} required by property {$key}.`
 								});
 							} else {
 								validationResult.propertiesValueMatches++;
@@ -1005,22 +1002,22 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 	function _checkScanError(): boolean {
 		switch (scanner.getTokenError()) {
 			case Json.ScanError.InvalidUnicode:
-				_error(localize('InvalidUnicode', 'Invalid unicode sequence in string.'), ErrorCode.InvalidUnicode);
+				_error('Invalid unicode sequence in string.', ErrorCode.InvalidUnicode);
 				return true;
 			case Json.ScanError.InvalidEscapeCharacter:
-				_error(localize('InvalidEscapeCharacter', 'Invalid escape character in string.'), ErrorCode.InvalidEscapeCharacter);
+				_error('Invalid escape character in string.', ErrorCode.InvalidEscapeCharacter);
 				return true;
 			case Json.ScanError.UnexpectedEndOfNumber:
-				_error(localize('UnexpectedEndOfNumber', 'Unexpected end of number.'), ErrorCode.UnexpectedEndOfNumber);
+				_error('Unexpected end of number.', ErrorCode.UnexpectedEndOfNumber);
 				return true;
 			case Json.ScanError.UnexpectedEndOfComment:
-				_error(localize('UnexpectedEndOfComment', 'Unexpected end of comment.'), ErrorCode.UnexpectedEndOfComment);
+				_error('Unexpected end of comment.', ErrorCode.UnexpectedEndOfComment);
 				return true;
 			case Json.ScanError.UnexpectedEndOfString:
-				_error(localize('UnexpectedEndOfString', 'Unexpected end of string.'), ErrorCode.UnexpectedEndOfString);
+				_error('Unexpected end of string.', ErrorCode.UnexpectedEndOfString);
 				return true;
 			case Json.ScanError.InvalidCharacter:
-				_error(localize('InvalidCharacter', 'Invalid characters in string. Control characters must be escaped.'), ErrorCode.InvalidCharacter);
+				_error('Invalid characters in string. Control characters must be escaped.', ErrorCode.InvalidCharacter);
 				return true;
 		}
 		return false;
@@ -1048,22 +1045,22 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 		while (scanner.getToken() !== Json.SyntaxKind.CloseBracketToken && scanner.getToken() !== Json.SyntaxKind.EOF) {
 			if (scanner.getToken() === Json.SyntaxKind.CommaToken) {
 				if (!needsComma) {
-					_error(localize('ValueExpected', 'Value expected'), ErrorCode.ValueExpected);
+					_error('Value expected', ErrorCode.ValueExpected);
 				}
 				let commaOffset = scanner.getTokenOffset();
 				_scanNext(); // consume comma
 				if (scanner.getToken() === Json.SyntaxKind.CloseBracketToken) {
 					if (needsComma) {
-						_errorAtRange(localize('TrailingComma', 'Trailing comma'), ErrorCode.TrailingComma, commaOffset, commaOffset + 1);
+						_errorAtRange('Trailing comma', ErrorCode.TrailingComma, commaOffset, commaOffset + 1);
 					}
 					continue;
 				}
 			} else if (needsComma) {
-				_error(localize('ExpectedComma', 'Expected comma'), ErrorCode.CommaExpected);
+				_error('Expected comma', ErrorCode.CommaExpected);
 			}
 			let item = _parseValue(node, count++);
 			if (!item) {
-				_error(localize('PropertyExpected', 'Value expected'), ErrorCode.ValueExpected, null, [], [Json.SyntaxKind.CloseBracketToken, Json.SyntaxKind.CommaToken]);
+				_error('Value expected', ErrorCode.ValueExpected, null, [], [Json.SyntaxKind.CloseBracketToken, Json.SyntaxKind.CommaToken]);
 			} else {
 				node.items.push(item);
 			}
@@ -1071,7 +1068,7 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 		}
 
 		if (scanner.getToken() !== Json.SyntaxKind.CloseBracketToken) {
-			return _error(localize('ExpectedCloseBracket', 'Expected comma or closing bracket'), ErrorCode.CommaOrCloseBacketExpected, node);
+			return _error('Expected comma or closing bracket', ErrorCode.CommaOrCloseBacketExpected, node);
 		}
 
 		return _finalize(node, true);
@@ -1084,7 +1081,7 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 		if (!key) {
 			if (scanner.getToken() === Json.SyntaxKind.Unknown) {
 				// give a more helpful error message
-				_error(localize('DoubleQuotesExpected', 'Property keys must be doublequoted'), ErrorCode.Undefined);
+				_error('Property keys must be doublequoted', ErrorCode.Undefined);
 				let keyNode = new StringASTNodeImpl(node, scanner.getTokenOffset(), scanner.getTokenLength());
 				keyNode.value = scanner.getTokenValue();
 				key = keyNode;
@@ -1097,9 +1094,9 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 
 		let seen = keysSeen[key.value];
 		if (seen) {
-			_errorAtRange(localize('DuplicateKeyWarning', "Duplicate object key"), ErrorCode.DuplicateKey, node.keyNode.offset, node.keyNode.offset + node.keyNode.length, DiagnosticSeverity.Warning);
+			_errorAtRange("Duplicate object key", ErrorCode.DuplicateKey, node.keyNode.offset, node.keyNode.offset + node.keyNode.length, DiagnosticSeverity.Warning);
 			if (typeof seen === 'object') {
-				_errorAtRange(localize('DuplicateKeyWarning', "Duplicate object key"), ErrorCode.DuplicateKey, seen.keyNode.offset, seen.keyNode.offset + seen.keyNode.length, DiagnosticSeverity.Warning);
+				_errorAtRange('DuplicateKeyWarning', ErrorCode.DuplicateKey, seen.keyNode.offset, seen.keyNode.offset + seen.keyNode.length, DiagnosticSeverity.Warning);
 			}
 			keysSeen[key.value] = true; // if the same key is duplicate again, avoid duplicate error reporting
 		} else {
@@ -1110,7 +1107,7 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 			node.colonOffset = scanner.getTokenOffset();
 			_scanNext(); // consume ColonToken
 		} else {
-			_error(localize('ColonExpected', 'Colon expected'), ErrorCode.ColonExpected);
+			_error('Colon expected', ErrorCode.ColonExpected);
 			if (scanner.getToken() === Json.SyntaxKind.StringLiteral && textDocument.positionAt(key.offset + key.length).line < textDocument.positionAt(scanner.getTokenOffset()).line) {
 				node.length = key.length;
 				return node;
@@ -1118,7 +1115,7 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 		}
 		let value = _parseValue(node, key.value);
 		if (!value) {
-			return _error(localize('ValueExpected', 'Value expected'), ErrorCode.ValueExpected, node, [], [Json.SyntaxKind.CloseBraceToken, Json.SyntaxKind.CommaToken]);
+			return _error('Value expected', ErrorCode.ValueExpected, node, [], [Json.SyntaxKind.CloseBraceToken, Json.SyntaxKind.CommaToken]);
 		}
 		node.valueNode = value;
 		node.length = value.offset + value.length - node.offset;
@@ -1137,22 +1134,22 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 		while (scanner.getToken() !== Json.SyntaxKind.CloseBraceToken && scanner.getToken() !== Json.SyntaxKind.EOF) {
 			if (scanner.getToken() === Json.SyntaxKind.CommaToken) {
 				if (!needsComma) {
-					_error(localize('PropertyExpected', 'Property expected'), ErrorCode.PropertyExpected);
+					_error('Property expected', ErrorCode.PropertyExpected);
 				}
 				let commaOffset = scanner.getTokenOffset();
 				_scanNext(); // consume comma
 				if (scanner.getToken() === Json.SyntaxKind.CloseBraceToken) {
 					if (needsComma) {
-						_errorAtRange(localize('TrailingComma', 'Trailing comma'), ErrorCode.TrailingComma, commaOffset, commaOffset + 1);
+						_errorAtRange('Trailing comma', ErrorCode.TrailingComma, commaOffset, commaOffset + 1);
 					}
 					continue;
 				}
 			} else if (needsComma) {
-				_error(localize('ExpectedComma', 'Expected comma'), ErrorCode.CommaExpected);
+				_error('Expected comma', ErrorCode.CommaExpected);
 			}
 			let property = _parseProperty(node, keysSeen);
 			if (!property) {
-				_error(localize('PropertyExpected', 'Property expected'), ErrorCode.PropertyExpected, null, [], [Json.SyntaxKind.CloseBraceToken, Json.SyntaxKind.CommaToken]);
+				_error('Property expected', ErrorCode.PropertyExpected, null, [], [Json.SyntaxKind.CloseBraceToken, Json.SyntaxKind.CommaToken]);
 			} else {
 				node.properties.push(property);
 			}
@@ -1160,7 +1157,7 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 		}
 
 		if (scanner.getToken() !== Json.SyntaxKind.CloseBraceToken) {
-			return _error(localize('ExpectedCloseBrace', 'Expected comma or closing brace'), ErrorCode.CommaOrCloseBraceExpected, node);
+			return _error('Expected comma or closing brace', ErrorCode.CommaOrCloseBraceExpected, node);
 		}
 		return _finalize(node, true);
 	}
@@ -1187,11 +1184,11 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 			try {
 				let numberValue = JSON.parse(tokenValue);
 				if (typeof numberValue !== 'number') {
-					return _error(localize('InvalidNumberFormat', 'Invalid number format.'), ErrorCode.Undefined, node);
+					return _error('Invalid number format.', ErrorCode.Undefined, node);
 				}
 				node.value = numberValue;
 			} catch (e) {
-				return _error(localize('InvalidNumberFormat', 'Invalid number format.'), ErrorCode.Undefined, node);
+				return _error('Invalid number format.', ErrorCode.Undefined, node);
 			}
 			node.isInteger = tokenValue.indexOf('.') === -1;
 		}
@@ -1221,9 +1218,9 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 	if (token !== Json.SyntaxKind.EOF) {
 		_root = _parseValue(null, null);
 		if (!_root) {
-			_error(localize('Invalid symbol', 'Expected a JSON object, array or literal.'), ErrorCode.Undefined);
+			_error('Expected a JSON object, array or literal.', ErrorCode.Undefined);
 		} else if (scanner.getToken() !== Json.SyntaxKind.EOF) {
-			_error(localize('End of file expected', 'End of file expected.'), ErrorCode.Undefined);
+			_error('End of file expected.', ErrorCode.Undefined);
 		}
 	}
 	return new JSONDocument(_root, problems, commentRanges);
