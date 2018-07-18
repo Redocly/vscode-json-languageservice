@@ -41,7 +41,6 @@ export interface LanguageService {
 	parseJSONDocument(document: TextDocument): JSONDocument;
 	newJSONDocument(rootNode: ASTNode, syntaxDiagnostics?: Diagnostic[]): JSONDocument;
 	resetSchema(uri: string): boolean;
-	doResolve(item: CompletionItem): Thenable<CompletionItem>;
 	doComplete(document: TextDocument, position: Position, doc: JSONDocument): Thenable<CompletionList | null>;
 	findDocumentSymbols(document: TextDocument, doc: JSONDocument): SymbolInformation[];
 	/** deprecated, use findDocumentColors instead */
@@ -79,7 +78,6 @@ export function getLanguageService(params: LanguageServiceParams): LanguageServi
 		doValidation: jsonValidation.doValidation.bind(jsonValidation),
 		parseJSONDocument: (document: TextDocument) => parseJSON(document, { collectComments: true }),
 		newJSONDocument: (root: ASTNode, diagnostics: Diagnostic[]) => newJSONDocument(root, diagnostics),
-		doResolve: jsonCompletion.doResolve.bind(jsonCompletion),
 		doComplete: jsonCompletion.doComplete.bind(jsonCompletion),
 		findDocumentSymbols: jsonDocumentSymbols.findDocumentSymbols.bind(jsonDocumentSymbols),
 		findColorSymbols: (d, s) => jsonDocumentSymbols.findDocumentColors(d, <InternalJSONDocument>s).then(s => s.map(s => s.range)),

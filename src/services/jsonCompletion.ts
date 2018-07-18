@@ -33,18 +33,6 @@ export class JSONCompletion {
 		this.promise = promiseConstructor || Promise;
 	}
 
-	public doResolve(item: CompletionItem): Thenable<CompletionItem> {
-		for (let i = this.contributions.length - 1; i >= 0; i--) {
-			if (this.contributions[i].resolveCompletion) {
-				let resolver = this.contributions[i].resolveCompletion(item);
-				if (resolver) {
-					return resolver;
-				}
-			}
-		}
-		return this.promise.resolve(item);
-	}
-
 	public doComplete(document: TextDocument, position: Position, doc: Parser.JSONDocument): Thenable<CompletionList> {
 
 		let result: CompletionList = {
@@ -200,7 +188,23 @@ export class JSONCompletion {
 				if (schemaProperties) {
 					Object.keys(schemaProperties).forEach((key: string) => {
 						let propertySchema = schemaProperties[key];
-						if (typeof propertySchema === 'object' && !propertySchema.deprecationMessage && !propertySchema.doNotSuggest) {
+
+						let readOnly = false;
+						if (typeof propertySchema === 'object' && propertySchema.allOf) {
+							for (let sub of propertySchema.allOf) {
+								if ((sub as JSONSchema).readOnly) {
+									readOnly = true;
+									break;
+								}
+							}
+						}
+
+						if (
+							typeof propertySchema === 'object' && 
+							!propertySchema.deprecationMessage && 
+							!propertySchema.doNotSuggest &&
+							!readOnly
+						) {
 							let proposal: CompletionItem = {
 								kind: CompletionItemKind.Property,
 								label: key,

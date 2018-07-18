@@ -59,6 +59,9 @@ export interface JSONSchema {
 	markdownDescription?: string; // VSCode extension
 	doNotSuggest?: boolean; // VSCode extension
 	allowComments?: boolean; // VSCode extension
+
+
+	readOnly?: boolean; // Swagger extension
 }
 
 export interface JSONSchemaMap {

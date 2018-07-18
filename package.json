@@ -1,5 +1,5 @@
 {
-  "name": "@redoc/vscode-json-languageservice",
+  "name": "vscode-json-languageservice",
   "version": "3.1.2",
   "description": "Language service for JSON",
   "main": "./lib/umd/jsonLanguageService.js",
