@@ -365,7 +365,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 	function _validateNode() {
 
 		function matchesType(type: string) {
-			return node.type === type || (type === 'integer' && node.type === 'number' && node.isInteger);
+			return node.type === type || (type === 'integer' && node.type === 'number' && node.isInteger) || (schema.nullable && node.value === null);
 		}
 
 		if (Array.isArray(schema.type)) {
