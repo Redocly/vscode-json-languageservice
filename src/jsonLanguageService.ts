@@ -2,12 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-
-import {
-	TextDocument, Position, CompletionItem, CompletionList, Hover, Range, SymbolInformation, Diagnostic,
-	TextEdit, FormattingOptions, MarkedString
-} from 'vscode-languageserver-types';
 
 import { JSONCompletion } from './services/jsonCompletion';
 import { JSONHover } from './services/jsonHover';
@@ -18,22 +12,22 @@ import { parse as parseJSON, JSONDocument as InternalJSONDocument, newJSONDocume
 import { schemaContributions } from './services/configuration';
 import { JSONSchemaService } from './services/jsonSchemaService';
 import { getFoldingRanges } from './services/jsonFolding';
+import { getSelectionRanges } from './services/jsonSelectionRanges';
 
 import { format as formatJSON } from 'jsonc-parser';
 import {
 	Thenable,
 	ASTNode,
-	Color, ColorInformation, ColorPresentation, LanguageServiceParams, LanguageSettings, DocumentLanguageSettings,
-	FoldingRange, JSONSchema
+	Color, ColorInformation, ColorPresentation,
+	LanguageServiceParams, LanguageSettings, DocumentLanguageSettings,
+	FoldingRange, JSONSchema, SelectionRange, FoldingRangesContext, DocumentSymbolsContext, ColorInformationContext as DocumentColorsContext,
+	TextDocument,
+	Position, CompletionItem, CompletionList, Hover, Range, SymbolInformation, Diagnostic,
+	TextEdit, FormattingOptions, DocumentSymbol
 } from './jsonLanguageTypes';
 
 export type JSONDocument = {};
 export * from './jsonLanguageTypes';
-
-export {
-	TextDocument, Position, CompletionItem, CompletionList, Hover, Range, SymbolInformation, Diagnostic,
-	TextEdit, FormattingOptions, MarkedString
-};
 
 export interface LanguageService {
 	configure(settings: LanguageSettings): void;
@@ -42,14 +36,16 @@ export interface LanguageService {
 	newJSONDocument(rootNode: ASTNode, syntaxDiagnostics?: Diagnostic[]): JSONDocument;
 	resetSchema(uri: string): boolean;
 	doComplete(document: TextDocument, position: Position, doc: JSONDocument): Thenable<CompletionList | null>;
-	findDocumentSymbols(document: TextDocument, doc: JSONDocument): SymbolInformation[];
+	findDocumentSymbols(document: TextDocument, doc: JSONDocument, context?: DocumentSymbolsContext): SymbolInformation[];
+	findDocumentSymbols2(document: TextDocument, doc: JSONDocument, context?: DocumentSymbolsContext): DocumentSymbol[];
 	/** deprecated, use findDocumentColors instead */
 	findColorSymbols(document: TextDocument, doc: JSONDocument): Thenable<Range[]>;
-	findDocumentColors(document: TextDocument, doc: JSONDocument): Thenable<ColorInformation[]>;
+	findDocumentColors(document: TextDocument, doc: JSONDocument, context?: DocumentColorsContext): Thenable<ColorInformation[]>;
 	getColorPresentations(document: TextDocument, doc: JSONDocument, color: Color, range: Range): ColorPresentation[];
 	doHover(document: TextDocument, position: Position, doc: JSONDocument): Thenable<Hover | null>;
 	format(document: TextDocument, range: Range, options: FormattingOptions): TextEdit[];
-	getFoldingRanges(document: TextDocument, context?: { rangeLimit?: number }): FoldingRange[];
+	getFoldingRanges(document: TextDocument, context?: FoldingRangesContext): FoldingRange[];
+	getSelectionRanges(document: TextDocument, positions: Position[], doc: JSONDocument): SelectionRange[];
 }
 
 
@@ -59,7 +55,7 @@ export function getLanguageService(params: LanguageServiceParams): LanguageServi
 	let jsonSchemaService = new JSONSchemaService(params.schemaRequestService, params.workspaceContext, promise);
 	jsonSchemaService.setSchemaContributions(schemaContributions);
 
-	let jsonCompletion = new JSONCompletion(jsonSchemaService, params.contributions, promise);
+	let jsonCompletion = new JSONCompletion(jsonSchemaService, params.contributions, promise, params.clientCapabilities);
 	let jsonHover = new JSONHover(jsonSchemaService, params.contributions, promise);
 	let jsonDocumentSymbols = new JSONDocumentSymbols(jsonSchemaService);
 	let jsonValidation = new JSONValidation(jsonSchemaService, promise);
@@ -80,11 +76,13 @@ export function getLanguageService(params: LanguageServiceParams): LanguageServi
 		newJSONDocument: (root: ASTNode, diagnostics: Diagnostic[]) => newJSONDocument(root, diagnostics),
 		doComplete: jsonCompletion.doComplete.bind(jsonCompletion),
 		findDocumentSymbols: jsonDocumentSymbols.findDocumentSymbols.bind(jsonDocumentSymbols),
+		findDocumentSymbols2: jsonDocumentSymbols.findDocumentSymbols2.bind(jsonDocumentSymbols),
 		findColorSymbols: (d, s) => jsonDocumentSymbols.findDocumentColors(d, <InternalJSONDocument>s).then(s => s.map(s => s.range)),
 		findDocumentColors: jsonDocumentSymbols.findDocumentColors.bind(jsonDocumentSymbols),
 		getColorPresentations: jsonDocumentSymbols.getColorPresentations.bind(jsonDocumentSymbols),
 		doHover: jsonHover.doHover.bind(jsonHover),
-		getFoldingRanges: getFoldingRanges,
+		getFoldingRanges,
+		getSelectionRanges,
 		format: (d, r, o) => {
 			let range = void 0;
 			if (r) {

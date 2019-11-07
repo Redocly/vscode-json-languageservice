@@ -2,20 +2,20 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 
 import * as assert from 'assert';
 import * as JsonSchema from '../jsonSchema';
 import * as jsonLanguageService from '../jsonLanguageService';
 
-import { CompletionList, CompletionItemKind, TextDocument, Position, TextEdit, InsertTextFormat } from 'vscode-languageserver-types';
+import { TextDocument, ClientCapabilities, CompletionList, CompletionItemKind, Position, MarkupContent } from '../jsonLanguageTypes';
+import { repeat } from '../utils/strings';
 
 const applyEdits = TextDocument.applyEdits;
 
 interface ItemDescription {
 	label: string;
 	detail?: string;
-	documentation?: string;
+	documentation?: string | MarkupContent;
 	kind?: CompletionItemKind;
 	resultText?: string;
 	notAvailable?: boolean;
@@ -35,7 +35,7 @@ let assertCompletion = function (completions: CompletionList, expected: ItemDesc
 		assert.equal(match.detail, expected.detail);
 	}
 	if (expected.documentation) {
-		assert.equal(match.documentation, expected.documentation);
+		assert.deepEqual(match.documentation, expected.documentation);
 	}
 	if (expected.kind) {
 		assert.equal(match.kind, expected.kind);
@@ -47,11 +47,11 @@ let assertCompletion = function (completions: CompletionList, expected: ItemDesc
 
 suite('JSON Completion', () => {
 
-	let testCompletionsFor = function (value: string, schema: JsonSchema.JSONSchema, expected: { count?: number, items?: ItemDescription[] }): PromiseLike<void> {
+	let testCompletionsFor = function (value: string, schema: JsonSchema.JSONSchema, expected: { count?: number, items?: ItemDescription[] }, clientCapabilities = ClientCapabilities.LATEST): PromiseLike<void> {
 		let offset = value.indexOf('|');
 		value = value.substr(0, offset) + value.substr(offset + 1);
 
-		let ls = jsonLanguageService.getLanguageService({});
+		let ls = jsonLanguageService.getLanguageService({ clientCapabilities });
 		if (schema) {
 			ls.configure({
 				schemas: [{
@@ -129,7 +129,7 @@ suite('JSON Completion', () => {
 		await testCompletionsFor('[ { "data": { "key": 1, "data": true } }, { "data": |', null, {
 			count: 3,
 			items: [
-				{ label: '{}', resultText: '[ { "data": { "key": 1, "data": true } }, { "data": {\n\t$1\n}' },
+				{ label: '{}', resultText: '[ { "data": { "key": 1, "data": true } }, { "data": {$1}' },
 				{ label: 'true', resultText: '[ { "data": { "key": 1, "data": true } }, { "data": true' },
 				{ label: 'false', resultText: '[ { "data": { "key": 1, "data": true } }, { "data": false' }
 			]
@@ -355,6 +355,40 @@ suite('JSON Completion', () => {
 			items: [
 				{ label: '1', resultText: '{ "c": [ 1, 1] }' },
 				{ label: '2', resultText: '{ "c": [ 2, 1] }' }
+			]
+		});
+	});
+
+	test('Complete array value with schema 3 (issue #81459)', async function () {
+
+		let schema: JsonSchema.JSONSchema = {
+			type: "object",
+			properties: {
+				"a": {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							foo: {
+								type: 'string'
+							},
+							bar: {
+								type: 'string'
+							}
+						}
+					}
+				}
+			}
+
+		};
+		await testCompletionsFor('{ "a" : [ { "foo": "a", | } ] }', schema, {
+			items: [
+				{ label: 'bar', resultText: '{ "a" : [ { "foo": "a", "bar": "$1" } ] }' }
+			]
+		});
+		await testCompletionsFor('{ "a" : [ { "bar": "a" }|, { } ] }', schema, {
+			items: [
+				{ label: 'foo', notAvailable: true }
 			]
 		});
 	});
@@ -727,6 +761,29 @@ suite('JSON Completion', () => {
 		});
 	});
 
+	test('Sanititize', async function () {
+		const longLabel = repeat('abcd', 20);
+
+		let schema: JsonSchema.JSONSchema = {
+			type: 'object',
+			properties: {
+				'a\nb': {
+					default: 1
+				},
+				[longLabel]: {
+					default: 2
+				}
+			}
+		};
+
+		await testCompletionsFor('{ | }', schema, {
+			items: [
+				{ label: 'a↵b', resultText: '{ "a\\\\nb": ${1:1} }' },
+				{ label: 'abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcda...', resultText: `{ "${longLabel}": \${1:2} }` }
+			]
+		});
+	});
+
 	test('Enum and defaults', async function () {
 		let schema: JsonSchema.JSONSchema = {
 			type: 'object',
@@ -750,6 +807,29 @@ suite('JSON Completion', () => {
 
 	});
 
+	test('examples', async function () {
+		let schema: JsonSchema.JSONSchema = {
+			type: 'object',
+			properties: {
+				prop: {
+					type: ['string'],
+					examples: ['a', 'b'],
+					default: 'c'
+				}
+			}
+		};
+
+		await testCompletionsFor('{ "prop": | }', schema, {
+			items: [
+				{ label: '"a"', resultText: '{ "prop": "a" }' },
+				{ label: '"b"', resultText: '{ "prop": "b" }' },
+				{ label: '"c"', resultText: '{ "prop": "c" }' }
+			],
+			count: 3
+		});
+
+	});
+
 	test('Const', async function () {
 		let schema: JsonSchema.JSONSchema = {
 			type: 'object',
@@ -761,7 +841,7 @@ suite('JSON Completion', () => {
 				propBool: {
 					type: 'boolean',
 					const: false
-				}				
+				}
 			}
 		};
 
@@ -776,7 +856,7 @@ suite('JSON Completion', () => {
 				{ label: 'false', resultText: '{ "propBool": false }' }
 			],
 			count: 1
-		});		
+		});
 
 	});
 
@@ -840,7 +920,7 @@ suite('JSON Completion', () => {
 		});
 		await testCompletionsFor('|', schema2, {
 			items: [
-				{ label: '{}', resultText: '{\n\t$1\n}' },
+				{ label: '{}', resultText: '{$1}' },
 				{ label: 'def1', documentation: 'def1Desc', resultText: '{\n\t"hello": "${1:world}"\n}' },
 				{ label: '{"hello":["world"]}', resultText: '{\n\t"${1:hello}": [\n\t\t"${2:world}"\n\t]\n}' }
 			]
@@ -899,6 +979,10 @@ suite('JSON Completion', () => {
 					enum: ['e1', 'e2', 'e3'],
 					enumDescriptions: ['E1', 'E2', 'E3'],
 				},
+				'prop2': {
+					description: 'prop2',
+					enum: ['e1', 'e2', 'e3'],
+				},
 			}
 		};
 
@@ -908,6 +992,87 @@ suite('JSON Completion', () => {
 				{ label: '"e2"', documentation: 'E2' }
 			]
 		});
+		await testCompletionsFor('{ "prop2": |', schema, {
+			items: [
+				{ label: '"e1"', documentation: 'prop2' },
+				{ label: '"e2"', documentation: 'prop2' }
+			]
+		});
+	});
+
+	test('Enum markdown description', async function () {
+		let schema: JsonSchema.JSONSchema = {
+			type: 'object',
+			properties: {
+				'prop1': {
+					enum: ['e1', 'e2', 'e3'],
+					markdownEnumDescriptions: ['*E1*', '*E2*', '*E3*'],
+				},
+				'prop2': {
+					enum: ['e1', 'e2', 'e3'],
+					enumDescriptions: ['E1', 'E2', 'E3'],
+					markdownEnumDescriptions: ['*E1*', '*E2*', '*E3*'],
+				},
+				'prop3': {
+					description: 'Hello',
+					markdownDescription: '*Hello*',
+					enum: ['e1', 'e2', 'e3'],
+					markdownEnumDescriptions: ['*E1*', '*E2*', '*E3*'],
+				},
+				'prop4': {
+					markdownDescription: '*prop4*',
+					enum: ['e1', 'e2', 'e3'],
+				},
+				'prop5': {
+					description: 'prop5',
+					markdownDescription: '*prop5*',
+					enum: ['e1', 'e2', 'e3'],
+				},
+			}
+		};
+
+		await testCompletionsFor('{ "prop1": |', schema, {
+			items: [
+				{ label: '"e1"', documentation: { kind: 'markdown', value: '*E1*' } },
+				{ label: '"e2"', documentation: { kind: 'markdown', value: '*E2*' } }
+			]
+		});
+		await testCompletionsFor('{ "prop2": |', schema, {
+			items: [
+				{ label: '"e1"', documentation: { kind: 'markdown', value: '*E1*' } },
+				{ label: '"e2"', documentation: { kind: 'markdown', value: '*E2*' } }
+			]
+		});
+		await testCompletionsFor('{ "prop3": |', schema, {
+			items: [
+				{ label: '"e1"', documentation: { kind: 'markdown', value: '*E1*' } },
+				{ label: '"e2"', documentation: { kind: 'markdown', value: '*E2*' } }
+			]
+		});
+		await testCompletionsFor('{ "prop4": |', schema, {
+			items: [
+				{ label: '"e1"', documentation: { kind: 'markdown', value: '*prop4*' } },
+				{ label: '"e2"', documentation: { kind: 'markdown', value: '*prop4*' } }
+			]
+		});
+		await testCompletionsFor('{ "prop5": |', schema, {
+			items: [
+				{ label: '"e1"', documentation: { kind: 'markdown', value: '*prop5*' } },
+				{ label: '"e2"', documentation: { kind: 'markdown', value: '*prop5*' } }
+			]
+		});
+
+		// without markdown capability
+		await testCompletionsFor('{ "prop1": |', schema, {
+			items: [
+				{ label: '"e1"', documentation: void 0 },
+			]
+		}, {});
+		await testCompletionsFor('{ "prop2": |', schema, {
+			items: [
+				{ label: '"e1"', documentation: 'E1' },
+			]
+		}, {});
 	});
 
 	test('In comment', async function () {
@@ -1034,8 +1199,8 @@ suite('JSON Completion', () => {
 
 		await testCompletionsFor('{ |', schema, {
 			items: [
-				{ label: 'object', resultText: '{ "object": {\n\t$1\n}' },
-				{ label: 'array', resultText: '{ "array": [\n\t$1\n]' },
+				{ label: 'object', resultText: '{ "object": {$1}' },
+				{ label: 'array', resultText: '{ "array": [$1]' },
 				{ label: 'string', resultText: '{ "string": "$1"' },
 				{ label: 'boolean', resultText: '{ "boolean": $1' },
 				{ label: 'oneEnum', resultText: '{ "oneEnum": "${1:foo}"' },
@@ -1047,5 +1212,20 @@ suite('JSON Completion', () => {
 				{ label: 'defaultAndEnum', resultText: '{ "defaultAndEnum": $1' }
 			]
 		});
+	});
+
+	test("if then and else", async function () {
+		await testCompletionsFor("{|}", {
+			if: { properties: { a: { type: "string" } } }
+		}, { count: 1, items: [{ label: "a", resultText: '{"a": "$1"}' }] });
+		await testCompletionsFor("{|}", {
+			if: { properties: { a: { type: "string" } }, required: ["a"] }, then: { properties: { b: { type: "string" } } }, properties: { c: { type: "string" } }
+		}, { count: 2, items: [{ label: "a", resultText: '{"a": "$1"}' }, { label: "c", resultText: '{"c": "$1"}' }] });
+		await testCompletionsFor('{"a":"test",|}', {
+			if: { properties: { a: { type: "string" } }, required: ["a"] }, then: { properties: { b: { type: "string" } } }, else: { properties: { c: { type: "string" } } }
+		}, { count: 1, items: [{ label: "b", resultText: '{"a":"test","b": "$1"}' }] });
+		await testCompletionsFor('{"a":"test",|}', {
+			if: { properties: { a: { type: "string" } }, required: ["a"] }, then: { properties: { b: { type: "string" } } }
+		}, { count: 1, items: [{ label: "b", resultText: '{"a":"test","b": "$1"}' }] });
 	});
 });

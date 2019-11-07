@@ -2,8 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-
 export type JSONSchemaRef = JSONSchema | boolean;
 
 export interface JSONSchema {
@@ -47,10 +45,17 @@ export interface JSONSchema {
 	const?: any;
 	contains?: JSONSchemaRef;
 	propertyNames?: JSONSchemaRef;
+	examples?: any[];
+
+	// schema draft 07
+	$comment?: string;
+	if?: JSONSchemaRef;
+	then?: JSONSchemaRef;
+	else?: JSONSchemaRef;
 
 	// VSCode extensions
 
-	defaultSnippets?: { label?: string; description?: string; body?: any; bodyText?: string; }[]; // VSCode extension: body: a object that will be converted to a JSON string. bodyText: text with \t and \n
+	defaultSnippets?: { label?: string; description?: string; markdownDescription?: string; body?: any; bodyText?: string; }[]; // VSCode extension: body: a object that will be converted to a JSON string. bodyText: text with \t and \n
 	errorMessage?: string; // VSCode extension
 	patternErrorMessage?: string; // VSCode extension
 	deprecationMessage?: string; // VSCode extension
@@ -59,9 +64,8 @@ export interface JSONSchema {
 	markdownDescription?: string; // VSCode extension
 	doNotSuggest?: boolean; // VSCode extension
 	allowComments?: boolean; // VSCode extension
-
-
 	readOnly?: boolean; // Swagger extension
+	allowTrailingCommas?: boolean; // VSCode extension
 }
 
 export interface JSONSchemaMap {

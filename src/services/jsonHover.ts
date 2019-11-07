@@ -2,15 +2,11 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-
 
 import * as Parser from '../parser/jsonParser';
 import * as SchemaService from './jsonSchemaService';
 import { JSONWorkerContribution } from '../jsonContributions';
-import { PromiseConstructor, Thenable, PropertyASTNode } from '../jsonLanguageTypes';
-
-import { Hover, TextDocument, Position, Range, MarkedString } from 'vscode-languageserver-types';
+import { TextDocument, PromiseConstructor, Thenable, Position, Range, Hover, MarkedString } from '../jsonLanguageTypes';
 
 export class JSONHover {
 
@@ -36,7 +32,7 @@ export class JSONHover {
 		// use the property description when hovering over an object key
 		if (node.type === 'string') {
 			let parent = node.parent;
-			if (parent.type === 'property' && parent.keyNode === node) {
+			if (parent && parent.type === 'property' && parent.keyNode === node) {
 				node = parent.valueNode;
 				if (!node) {
 					return this.promise.resolve(null);
@@ -105,7 +101,7 @@ export class JSONHover {
 					if (result.length > 0) {
 						result += "\n\n";
 					}
-					result += `\`${toMarkdown(enumValue)}\`: ${markdownEnumValueDescription}`;
+					result += `\`${toMarkdownCodeBlock(enumValue)}\`: ${markdownEnumValueDescription}`;
 				}
 				return createHover([result]);
 			}
@@ -120,4 +116,12 @@ function toMarkdown(plain: string) {
 		return res.replace(/[\\`*_{}[\]()#+\-.!]/g, "\\$&"); // escape markdown syntax tokens: http://daringfireball.net/projects/markdown/syntax#backslash
 	}
 	return void 0;
+}
+
+function toMarkdownCodeBlock(content: string) {
+	// see https://daringfireball.net/projects/markdown/syntax#precode
+	if (content.indexOf('`') !== -1) {
+		return '`` ' + content + ' ``';
+	}
+	return content;
 }
