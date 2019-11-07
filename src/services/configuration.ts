@@ -253,4 +253,4 @@ export const schemaContributions: ISchemaContributions = {
 		// 	'default': {}
 		// }
 	}
-}
+};

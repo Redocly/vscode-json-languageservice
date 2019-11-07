@@ -649,15 +649,13 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				case 'uri-reference': {
 					let errorMessage;
 					if (!node.value) {
-						errorMessage = 'URI expected.'
+						errorMessage = 'URI expected.';
 					} else {
-						try {
-							let uri = URI.parse(node.value);
-							if (!uri.scheme && schema.format === 'uri') {
-								errorMessage = 'URI with a scheme is expected.'
-							}
-						} catch (e) {
-							errorMessage = e.message;
+						const match = /^(([^:/?#]+?):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/.exec(node.value);
+						if (!match) {
+							errorMessage = localize('uriMissing', 'URI is expected.');
+						} else if (!match[2] && schema.format === 'uri') {
+							errorMessage = localize('uriSchemeMissing', 'URI with a scheme is expected.');
 						}
 					}
 					if (errorMessage) {
@@ -679,20 +677,9 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 						validationResult.problems.push({
 							location: { offset: node.offset, length: node.length },
 							severity: DiagnosticSeverity.Warning,
-							message: schema.patternErrorMessage || schema.errorMessage || 'String is not an e-mail address.'
+							message: schema.patternErrorMessage || schema.errorMessage || format.errorMessage
 						});
 					}
-					break;
-				case 'color-hex': 
-				{
-					if (!node.value.match(formats["color-hex"].pattern)) {
-						validationResult.problems.push({
-							location: { offset: node.offset, length: node.length },
-							severity: DiagnosticSeverity.Warning,
-							message: schema.patternErrorMessage || schema.errorMessage || 'Invalid color format. Use #RGB, #RGBA, #RRGGBB or #RRGGBBAA.'
-						});
-					}
-				}
 					break;
 				default:
 			}
