@@ -2,16 +2,15 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 
 import * as assert from 'assert';
 import * as Parser from '../parser/jsonParser';
 import * as SchemaService from '../services/jsonSchemaService';
 import * as JsonSchema from '../jsonSchema';
-import { JSONCompletion } from '../services/jsonCompletion';
 import { JSONHover } from '../services/jsonHover';
 
-import { Hover, TextDocument, TextDocumentIdentifier, Range, Position, TextEdit, MarkedString } from 'vscode-languageserver-types';
+import { Hover, Position, MarkedString } from '../jsonLanguageTypes';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 suite('JSON Hover', () => {
 

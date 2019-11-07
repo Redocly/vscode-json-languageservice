@@ -2,17 +2,16 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 
 import * as assert from 'assert';
 import * as SchemaService from '../services/jsonSchemaService';
-import * as JsonSchema from '../jsonSchema';
-import * as Json from 'jsonc-parser';
 import * as Parser from '../parser/jsonParser';
 import * as fs from 'fs';
 import * as url from 'url';
 import * as path from 'path';
-import { TextDocument } from 'vscode-languageserver-types';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { getLanguageService } from '../jsonLanguageService';
+import { JSONSchema, SchemaRequestService } from '../jsonLanguageTypes';
 
 function toDocument(text: string, config?: Parser.JSONDocumentConfig): { textDoc: TextDocument, jsonDoc: Parser.JSONDocument } {
 	let textDoc = TextDocument.create('foo://bar/file.json', 'json', 0, text);
@@ -33,21 +32,32 @@ suite('JSON Schema', () => {
 		'http://schema.management.azure.com/schemas/2015-08-01/Microsoft.Compute.json': 'Microsoft.Compute.json'
 	};
 
-	let requestServiceMock = function (uri: string): Promise<string> {
-		if (uri.length && uri[uri.length - 1] === '#') {
-			uri = uri.substr(0, uri.length - 1);
-		}
-		let fileName = fixureDocuments[uri];
-		if (fileName) {
-			return new Promise<string>((c, e) => {
-				let fixturePath = path.join(__dirname, '../../../src/test/fixtures', fileName);
-				fs.readFile(fixturePath, 'UTF-8', (err, result) => {
-					err ? e("Resource not found.") : c(result.toString());
+	function newMockRequestService(schemas: { [uri: string]: JSONSchema } = {}, accesses: string[] = []): SchemaRequestService {
+
+		return (uri: string): Promise<string> => {
+			if (uri.length && uri[uri.length - 1] === '#') {
+				uri = uri.substr(0, uri.length - 1);
+			}
+			let schema = schemas[uri];
+			if (schema) {
+				if (accesses.indexOf(uri) === -1) {
+					accesses.push(uri);
+				}
+				return Promise.resolve(JSON.stringify(schema));
+			}
+
+			let fileName = fixureDocuments[uri];
+			if (fileName) {
+				return new Promise<string>((c, e) => {
+					let fixturePath = path.join(__dirname, '../../../src/test/fixtures', fileName);
+					fs.readFile(fixturePath, 'UTF-8', (err, result) => {
+						err ? e("Resource not found") : c(result.toString());
+					});
 				});
-			});
-		}
-		return Promise.reject<string>("Resource not found.");
-	};
+			}
+			return Promise.reject<string>("Resource not found");
+		};
+	}
 
 	let workspaceContext = {
 		resolveRelativePath: (relativePath: string, resource: string) => {
@@ -56,7 +66,7 @@ suite('JSON Schema', () => {
 	};
 
 	test('Resolving $refs', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		service.setSchemaContributions({
 			schemas: {
 				"https://myschemastore/main": {
@@ -87,7 +97,7 @@ suite('JSON Schema', () => {
 	});
 
 	test('Resolving $refs 2', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		service.setSchemaContributions({
 			schemas: {
 				"http://json.schemastore.org/swagger-2.0": {
@@ -124,7 +134,7 @@ suite('JSON Schema', () => {
 	});
 
 	test('Resolving $refs 3', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		service.setSchemaContributions({
 			schemas: {
 				"https://myschemastore/main/schema1.json": {
@@ -172,12 +182,12 @@ suite('JSON Schema', () => {
 	});
 
 	test('FileSchema', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 
 		service.setSchemaContributions({
 			schemas: {
-				"main": {
-					id: 'main',
+				"test://schemas/main": {
+					id: 'test://schemas/main',
 					type: 'object',
 					properties: {
 						child: {
@@ -194,19 +204,19 @@ suite('JSON Schema', () => {
 			}
 		});
 
-		return service.getResolvedSchema('main').then(fs => {
+		return service.getResolvedSchema('test://schemas/main').then(fs => {
 			let section = fs.getSection(['child', 'grandchild']);
 			assert.equal(section.description, 'Meaning of Life');
 		});
 	});
 
 	test('Array FileSchema', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 
 		service.setSchemaContributions({
 			schemas: {
-				"main": {
-					id: 'main',
+				"test://schemas/main": {
+					id: 'test://schemas/main',
 					type: 'object',
 					properties: {
 						child: {
@@ -226,19 +236,19 @@ suite('JSON Schema', () => {
 			}
 		});
 
-		return service.getResolvedSchema('main').then(fs => {
+		return service.getResolvedSchema('test://schemas/main').then(fs => {
 			let section = fs.getSection(['child', '0', 'grandchild']);
 			assert.equal(section.description, 'Meaning of Life');
 		});
 	});
 
 	test('Missing subschema', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 
 		service.setSchemaContributions({
 			schemas: {
-				"main": {
-					id: 'main',
+				"test://schemas/main": {
+					id: 'test://schemas/main',
 					type: 'object',
 					properties: {
 						child: {
@@ -249,16 +259,16 @@ suite('JSON Schema', () => {
 			}
 		});
 
-		return service.getResolvedSchema('main').then(fs => {
+		return service.getResolvedSchema('test://schemas/main').then(fs => {
 			let section = fs.getSection(['child', 'grandchild']);
 			assert.strictEqual(section, null);
 		});
 	});
 
 	test('Preloaded Schema', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		let id = 'https://myschemastore/test1';
-		let schema: JsonSchema.JSONSchema = {
+		let schema: JSONSchema = {
 			type: 'object',
 			properties: {
 				child: {
@@ -282,9 +292,9 @@ suite('JSON Schema', () => {
 	});
 
 	test('Multiple matches', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		let id1 = 'https://myschemastore/test1';
-		let schema1: JsonSchema.JSONSchema = {
+		let schema1: JSONSchema = {
 			type: 'object',
 			properties: {
 				foo: {
@@ -294,7 +304,7 @@ suite('JSON Schema', () => {
 		};
 
 		let id2 = 'https://myschemastore/test2';
-		let schema2: JsonSchema.JSONSchema = {
+		let schema2: JSONSchema = {
 			type: 'object',
 			properties: {
 				bar: {
@@ -314,9 +324,9 @@ suite('JSON Schema', () => {
 	});
 
 	test('External Schema', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		let id = 'https://myschemastore/test1';
-		let schema: JsonSchema.JSONSchema = {
+		let schema: JSONSchema = {
 			type: 'object',
 			properties: {
 				child: {
@@ -341,11 +351,11 @@ suite('JSON Schema', () => {
 
 
 	test('Resolving in-line $refs', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		let id = 'https://myschemastore/test1';
 
-		let schema: JsonSchema.JSONSchema = {
-			id: 'main',
+		let schema: JSONSchema = {
+			id: 'test://schemas/main',
 			type: 'object',
 			definitions: {
 				'grandchild': {
@@ -377,10 +387,10 @@ suite('JSON Schema', () => {
 	});
 
 	test('Resolving in-line $refs automatically for external schemas', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		let id = 'https://myschemastore/test1';
-		let schema: JsonSchema.JSONSchema = {
-			id: 'main',
+		let schema: JSONSchema = {
+			id: 'test://schemas/main',
 			type: 'object',
 			definitions: {
 				'grandchild': {
@@ -412,9 +422,9 @@ suite('JSON Schema', () => {
 
 
 	test('Clearing External Schemas', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		let id1 = 'http://myschemastore/test1';
-		let schema1: JsonSchema.JSONSchema = {
+		let schema1: JSONSchema = {
 			type: 'object',
 			properties: {
 				child: {
@@ -424,7 +434,7 @@ suite('JSON Schema', () => {
 		};
 
 		let id2 = 'http://myschemastore/test2';
-		let schema2: JsonSchema.JSONSchema = {
+		let schema2: JSONSchema = {
 			type: 'object',
 			properties: {
 				child: {
@@ -451,12 +461,12 @@ suite('JSON Schema', () => {
 	});
 
 	test('Schema contributions', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 
 		service.setSchemaContributions({
 			schemas: {
 				"http://myschemastore/myschemabar": {
-					id: 'main',
+					id: 'http://myschemastore/myschemabar',
 					type: 'object',
 					properties: {
 						foo: {
@@ -470,7 +480,7 @@ suite('JSON Schema', () => {
 		});
 
 		let id2 = 'http://myschemastore/myschemafoo';
-		let schema2: JsonSchema.JSONSchema = {
+		let schema2: JSONSchema = {
 			type: 'object',
 			properties: {
 				child: {
@@ -501,7 +511,7 @@ suite('JSON Schema', () => {
 
 	test('Resolving circular $refs', async function () {
 
-		let service: SchemaService.IJSONSchemaService = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service: SchemaService.IJSONSchemaService = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 
 		let input = {
 			"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
@@ -540,7 +550,7 @@ suite('JSON Schema', () => {
 
 	test('Resolving circular $refs, invalid document', async function () {
 
-		let service: SchemaService.IJSONSchemaService = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service: SchemaService.IJSONSchemaService = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 
 		let input = {
 			"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
@@ -569,17 +579,17 @@ suite('JSON Schema', () => {
 	});
 
 	test('$refs in $ref', async function () {
-		let service = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 		let id0 = "foo://bar/bar0";
 		let id1 = "foo://bar/bar1";
-		let schema0: JsonSchema.JSONSchema = {
+		let schema0: JSONSchema = {
 			"allOf": [
 				{
 					$ref: id1
 				}
 			]
 		};
-		let schema1: JsonSchema.JSONSchema = {
+		let schema1: JSONSchema = {
 			$ref: "#/definitions/foo",
 			definitions: {
 				foo: {
@@ -591,14 +601,56 @@ suite('JSON Schema', () => {
 		let fsm0 = service.registerExternalSchema(id0, ['*.json'], schema0);
 		let fsm1 = service.registerExternalSchema(id1, [], schema1);
 		return fsm0.getResolvedSchema().then((fs0) => {
-			assert.equal((<JsonSchema.JSONSchema>fs0.schema.allOf[0]).type, 'object');
+			assert.equal((<JSONSchema>fs0.schema.allOf[0]).type, 'object');
+		});
+
+	});
+
+	test('$refs in $ref - circular', async function () {
+		let service = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
+		service.setSchemaContributions({
+			schemas: {
+				"https://myschemastore/main": {
+					type: 'object',
+					properties: {
+						responseValue: {
+							"$ref": "#/definitions/shellConfiguration"
+						},
+						hops: {
+							"$ref": "#/definitions/hop1"
+						}
+					},
+					definitions: {
+						shellConfiguration: {
+							$ref: '#definitions/shellConfiguration',
+							type: 'object'
+						},
+						hop1: {
+							$ref: '#definitions/hop2',
+						},
+						hop2: {
+							$ref: '#definitions/hop1',
+							type: 'object'
+						}
+					}
+				}
+			}
+		});
+
+		return service.getResolvedSchema('https://myschemastore/main').then(fs => {
+			assert.deepEqual(fs.schema.properties['responseValue'], {
+				type: 'object'
+			});
+			assert.deepEqual(fs.schema.properties['hops'], {
+				type: 'object'
+			});
 		});
 
 	});
 
 
 	test('Validate Azure Resource Definition', async function () {
-		let service: SchemaService.IJSONSchemaService = new SchemaService.JSONSchemaService(requestServiceMock, workspaceContext);
+		let service: SchemaService.IJSONSchemaService = new SchemaService.JSONSchemaService(newMockRequestService(), workspaceContext);
 
 		let input = {
 			"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
@@ -733,4 +785,105 @@ suite('JSON Schema', () => {
 
 
 	});
+
+	test('clearSchema', async function () {
+		const mainSchemaURI = "http://foo/main.schema.json";
+		const aSchemaURI1 = "http://foo/a.schema.json";
+		const bSchemaURI1 = "http://foo/b.schema.json";
+
+		const schemas: { [uri: string]: JSONSchema } = {
+			[mainSchemaURI]: {
+				type: 'object',
+				properties: {
+					bar: {
+						$ref: aSchemaURI1
+					}
+				}
+			},
+			[aSchemaURI1]: {
+				type: 'object',
+				properties: {
+					a: {
+						type: 'string'
+					}
+				}
+			},
+			[bSchemaURI1]: {
+				type: 'boolean',
+			}
+		};
+		const accesses = [];
+		const schemaRequestService = newMockRequestService(schemas, accesses);
+
+		const ls = getLanguageService({ workspaceContext, schemaRequestService });
+
+		const testDoc = toDocument(JSON.stringify({ $schema: mainSchemaURI, bar: { a: 1 } }));
+		let validation = await ls.doValidation(testDoc.textDoc, testDoc.jsonDoc);
+		assert.deepEqual(validation.map(v => v.message), ['Incorrect type. Expected "string".']);
+		assert.deepEqual([mainSchemaURI, aSchemaURI1], accesses); // b in not loaded as it is not references
+
+		accesses.length = 0;
+
+		// add a dependency to b
+
+		schemas[aSchemaURI1] = {
+			type: 'object',
+			properties: {
+				a: {
+					$ref: bSchemaURI1
+				}
+			}
+		};
+
+		ls.resetSchema(aSchemaURI1);
+
+		validation = await ls.doValidation(testDoc.textDoc, testDoc.jsonDoc);
+		assert.deepEqual(validation.map(v => v.message), ['Incorrect type. Expected "boolean".']);
+		assert.deepEqual([mainSchemaURI, aSchemaURI1, bSchemaURI1], accesses); // main, a and b are loaded
+
+		// change to be but no reset
+
+		schemas[bSchemaURI1] = {
+			type: 'number'
+		};
+
+		accesses.length = 0;
+
+		validation = await ls.doValidation(testDoc.textDoc, testDoc.jsonDoc);
+		assert.deepEqual(validation.map(v => v.message), ['Incorrect type. Expected "boolean".']);
+		assert.deepEqual([], accesses); // no loades as there was no reset
+
+		// do the reset
+		ls.resetSchema(bSchemaURI1);
+
+		validation = await ls.doValidation(testDoc.textDoc, testDoc.jsonDoc);
+		assert.deepEqual(validation.map(v => v.message), []);
+		assert.deepEqual([mainSchemaURI, aSchemaURI1, bSchemaURI1], accesses); // main, a and b are loaded, main, a depend on b
+
+		accesses.length = 0;
+
+		// remove the dependency
+		schemas[aSchemaURI1] = {
+			type: 'object',
+			properties: {
+				a: {
+					type: 'boolean'
+				}
+			}
+		};
+
+		ls.resetSchema(aSchemaURI1);
+		validation = await ls.doValidation(testDoc.textDoc, testDoc.jsonDoc);
+		assert.deepEqual(validation.map(v => v.message), ['Incorrect type. Expected "boolean".']);
+		assert.deepEqual([mainSchemaURI, aSchemaURI1], accesses);
+
+
+		accesses.length = 0;
+		ls.resetSchema(bSchemaURI1);
+
+		validation = await ls.doValidation(testDoc.textDoc, testDoc.jsonDoc);
+		assert.deepEqual(validation.map(v => v.message), ['Incorrect type. Expected "boolean".']);
+		assert.deepEqual([], accesses); // b is not depended anymore
+	});
+
 });

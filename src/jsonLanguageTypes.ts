@@ -2,13 +2,27 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-
 import { JSONWorkerContribution, JSONPath, Segment, CompletionsCollector } from './jsonContributions';
 import { JSONSchema } from './jsonSchema';
-import { Range, TextEdit } from 'vscode-languageserver-types';
+import {
+	Range, TextEdit, Color, ColorInformation, ColorPresentation, FoldingRange, FoldingRangeKind, MarkupKind, SelectionRange,
+	Diagnostic, DiagnosticSeverity,
+	CompletionItem, CompletionItemKind, CompletionList, Position,
+	InsertTextFormat, MarkupContent,
+	SymbolInformation, SymbolKind, DocumentSymbol, Location,  Hover, MarkedString, FormattingOptions
+} from 'vscode-languageserver-types';
 
-export { Range, TextEdit, JSONSchema, JSONWorkerContribution, JSONPath, Segment, CompletionsCollector };
+import { TextDocument } from 'vscode-languageserver-textdocument';
+
+export {
+	TextDocument, 
+	Range, TextEdit, JSONSchema, JSONWorkerContribution, JSONPath, Segment, CompletionsCollector,
+	Color, ColorInformation, ColorPresentation, FoldingRange, FoldingRangeKind, SelectionRange,
+	Diagnostic, DiagnosticSeverity,
+	CompletionItem, CompletionItemKind, CompletionList, Position,
+	InsertTextFormat, MarkupContent, MarkupKind,
+	SymbolInformation, SymbolKind, DocumentSymbol, Location,  Hover, MarkedString, FormattingOptions
+};
 
 /**
  * Error codes used by diagnostics
@@ -79,86 +93,6 @@ export interface NullASTNode extends BaseASTNode {
 	readonly value: null;
 }
 
-export interface Color {
-	red: number; blue: number; green: number; alpha: number;
-}
-
-export interface ColorInformation {
-	range: Range;
-	color: Color;
-}
-
-export interface ColorPresentation {
-	/**
-	 * The label of this color presentation. It will be shown on the color
-	 * picker header. By default this is also the text that is inserted when selecting
-	 * this color presentation.
-	 */
-	label: string;
-	/**
-	 * An [edit](#TextEdit) which is applied to a document when selecting
-	 * this presentation for the color.  When `falsy` the [label](#ColorPresentation.label)
-	 * is used.
-	 */
-	textEdit?: TextEdit;
-	/**
-	 * An optional array of additional [text edits](#TextEdit) that are applied when
-	 * selecting this color presentation. Edits must not overlap with the main [edit](#ColorPresentation.textEdit) nor with themselves.
-	 */
-	additionalTextEdits?: TextEdit[];
-}
-
-/**
- * Enum of known range kinds
- */
-export enum FoldingRangeKind {
-	/**
-	 * Folding range for a comment
-	 */
-	Comment = 'comment',
-	/**
-	 * Folding range for a imports or includes
-	 */
-	Imports = 'imports',
-	/**
-	 * Folding range for a region (e.g. `#region`)
-	 */
-	Region = 'region'
-}
-
-/**
- * Represents a folding range.
- */
-export interface FoldingRange {
-
-	/**
-	 * The zero-based line number from where the folded range starts.
-	 */
-	startLine: number;
-
-	/**
-	 * The zero-based character offset from where the folded range starts. If not defined, defaults to the length of the start line.
-	 */
-	startCharacter?: number;
-
-	/**
-	 * The zero-based line number where the folded range ends.
-	 */
-	endLine: number;
-
-	/**
-	 * The zero-based character offset before the folded range ends. If not defined, defaults to the length of the end line.
-	 */
-	endCharacter?: number;
-
-	/**
-	 * Describes the kind of the folding range such as `comment' or 'region'. The kind
-	 * is used to categorize folding ranges and used by commands like 'Fold all comments'. See
-	 * [FoldingRangeKind](#FoldingRangeKind) for an enumeration of standardized kinds.
-	 */
-	kind?: string;
-}
-
 export interface LanguageSettings {
 	/**
 	 * If set, the validator will return syntax and semantic errors.
@@ -218,51 +152,51 @@ export interface SchemaRequestService {
 }
 
 export interface PromiseConstructor {
-    /**
-     * Creates a new Promise.
-     * @param executor A callback used to initialize the promise. This callback is passed two arguments:
-     * a resolve callback used resolve the promise with a value or the result of another promise,
-     * and a reject callback used to reject the promise with a provided reason or error.
-     */
+	/**
+	 * Creates a new Promise.
+	 * @param executor A callback used to initialize the promise. This callback is passed two arguments:
+	 * a resolve callback used resolve the promise with a value or the result of another promise,
+	 * and a reject callback used to reject the promise with a provided reason or error.
+	 */
 	new <T>(executor: (resolve: (value?: T | Thenable<T>) => void, reject: (reason?: any) => void) => void): Thenable<T>;
 
-    /**
-     * Creates a Promise that is resolved with an array of results when all of the provided Promises
-     * resolve, or rejected when any Promise is rejected.
-     * @param values An array of Promises.
-     * @returns A new Promise.
-     */
+	/**
+	 * Creates a Promise that is resolved with an array of results when all of the provided Promises
+	 * resolve, or rejected when any Promise is rejected.
+	 * @param values An array of Promises.
+	 * @returns A new Promise.
+	 */
 	all<T>(values: Array<T | Thenable<T>>): Thenable<T[]>;
-    /**
-     * Creates a new rejected promise for the provided reason.
-     * @param reason The reason the promise was rejected.
-     * @returns A new rejected Promise.
-     */
+	/**
+	 * Creates a new rejected promise for the provided reason.
+	 * @param reason The reason the promise was rejected.
+	 * @returns A new rejected Promise.
+	 */
 	reject<T>(reason: any): Thenable<T>;
 
-    /**
-      * Creates a new resolved promise for the provided value.
-      * @param value A promise.
-      * @returns A promise whose internal state matches the provided promise.
-      */
+	/**
+		 * Creates a new resolved promise for the provided value.
+		 * @param value A promise.
+		 * @returns A promise whose internal state matches the provided promise.
+		 */
 	resolve<T>(value: T | Thenable<T>): Thenable<T>;
 
 }
 
 export interface Thenable<R> {
-    /**
-    * Attaches callbacks for the resolution and/or rejection of the Promise.
-    * @param onfulfilled The callback to execute when the Promise is resolved.
-    * @param onrejected The callback to execute when the Promise is rejected.
-    * @returns A Promise for the completion of which ever callback is executed.
-    */
+	/**
+	* Attaches callbacks for the resolution and/or rejection of the Promise.
+	* @param onfulfilled The callback to execute when the Promise is resolved.
+	* @param onrejected The callback to execute when the Promise is rejected.
+	* @returns A Promise for the completion of which ever callback is executed.
+	*/
 	then<TResult>(onfulfilled?: (value: R) => TResult | Thenable<TResult>, onrejected?: (reason: any) => TResult | Thenable<TResult>): Thenable<TResult>;
 	then<TResult>(onfulfilled?: (value: R) => TResult | Thenable<TResult>, onrejected?: (reason: any) => void): Thenable<TResult>;
 }
 
 export interface LanguageServiceParams {
 	/**
-	 * The schema request service is used to fetch schemas. The result should the schema file comment, or,
+	 * The schema request service is used to fetch schemas from a URI. The provider returns the schema file content, or,
 	 * in case of an error, a displayable error string
 	 */
 	schemaRequestService?: SchemaRequestService;
@@ -278,6 +212,97 @@ export interface LanguageServiceParams {
 	 * A promise constructor. If not set, the ES5 Promise will be used.
 	 */
 	promiseConstructor?: PromiseConstructor;
+	/**
+	 * Describes the LSP capabilities the client supports.
+	 */
+	clientCapabilities?: ClientCapabilities;
 }
 
+/**
+ * Describes what LSP capabilities the client supports
+ */
+export interface ClientCapabilities {
+	/**
+	 * The text document client capabilities
+	 */
+	textDocument?: {
+		/**
+		 * Capabilities specific to completions.
+		 */
+		completion?: {
+			/**
+			 * The client supports the following `CompletionItem` specific
+			 * capabilities.
+			 */
+			completionItem?: {
+				/**
+				 * Client supports the follow content formats for the documentation
+				 * property. The order describes the preferred format of the client.
+				 */
+				documentationFormat?: MarkupKind[];
 
+				/**
+				 * The client supports commit characters on a completion item.
+				 */
+				commitCharactersSupport?: boolean
+			};
+
+		};
+		/**
+		 * Capabilities specific to hovers.
+		 */
+		hover?: {
+			/**
+			 * Client supports the follow content formats for the content
+			 * property. The order describes the preferred format of the client.
+			 */
+			contentFormat?: MarkupKind[];
+		};
+	};
+}
+
+export namespace ClientCapabilities {
+	export const LATEST: ClientCapabilities = {
+		textDocument: {
+			completion: {
+				completionItem: {
+					documentationFormat: [MarkupKind.Markdown, MarkupKind.PlainText],
+					commitCharactersSupport: true
+				}
+			}
+		}
+	};
+}
+
+export interface FoldingRangesContext {
+	/**
+	 * The maximal number of ranges returned.
+	 */
+	rangeLimit?: number;
+	/**
+	 * Called when the result was cropped.
+	 */
+	onRangeLimitExceeded?: (uri: string) => void;
+}
+
+export interface DocumentSymbolsContext {
+	/**
+	 * The maximal number of document symbols returned.
+	 */
+	resultLimit?: number;
+	/**
+	 * Called when the result was cropped.
+	 */
+	onResultLimitExceeded?: (uri: string) => void;
+}
+
+export interface ColorInformationContext {
+	/**
+	 * The maximal number of color informations returned.
+	 */
+	resultLimit?: number;
+	/**
+	 * Called when the result was cropped.
+	 */
+	onResultLimitExceeded?: (uri: string) => void;
+}

@@ -2,9 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-
-import {Thenable, MarkedString, CompletionItem} from './jsonLanguageService';
+import { Thenable, MarkedString, CompletionItem } from './jsonLanguageService';
 
 export interface JSONWorkerContribution {
 	getInfoContribution(uri: string, location: JSONPath): Thenable<MarkedString[]>;

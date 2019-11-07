@@ -2,18 +2,16 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 
-import * as Json from 'jsonc-parser';
-import {TextDocument, Range, Position, FormattingOptions, TextEdit} from 'vscode-languageserver-types';
-import * as jsonLanguageService from '../jsonLanguageService';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { getLanguageService, ClientCapabilities, Range } from '../jsonLanguageService';
 import * as assert from 'assert';
 
 const applyEdits = TextDocument.applyEdits;
 
 suite('JSON Formatter', () => {
 
-	const ls = jsonLanguageService.getLanguageService({});
+	const ls = getLanguageService({ clientCapabilities: ClientCapabilities.LATEST });
 
 	function format(unformatted: string, expected: string, insertSpaces = true) {
 		let range: Range = null;
@@ -32,7 +30,7 @@ suite('JSON Formatter', () => {
 
 		var document = TextDocument.create(uri, 'json', 0, unformatted);
 		let edits = ls.format(document, range, { tabSize: 2, insertSpaces: insertSpaces });
-		let formatted  = applyEdits(document, edits);
+		let formatted = applyEdits(document, edits);
 		assert.equal(formatted, expected);
 	}
 
@@ -378,7 +376,7 @@ suite('JSON Formatter', () => {
 
 		format(content, expected);
 	});
-	
+
 
 	test('range with existing indent - tabs', () => {
 		var content = [
@@ -483,5 +481,5 @@ suite('JSON Formatter', () => {
 		].join('\n');
 
 		format(content, expected);
-	});	
+	});
 });

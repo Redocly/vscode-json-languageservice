@@ -2,13 +2,11 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 
-import { TextDocument, Position } from 'vscode-languageserver-types';
 import { createScanner, SyntaxKind, ScanError } from 'jsonc-parser';
-import { FoldingRangeKind, FoldingRange } from '../jsonLanguageTypes';
+import { TextDocument, FoldingRangeKind, FoldingRange, FoldingRangesContext, Position } from '../jsonLanguageTypes';
 
-export function getFoldingRanges(document: TextDocument, context?: { rangeLimit?: number }): FoldingRange[] {
+export function getFoldingRanges(document: TextDocument, context?: FoldingRangesContext): FoldingRange[] {
 	let ranges: FoldingRange[] = [];
 	let nestingLevels: number[] = [];
 	let stack: FoldingRange[] = [];
@@ -93,6 +91,10 @@ export function getFoldingRanges(document: TextDocument, context?: { rangeLimit?
 	if (typeof rangeLimit !== 'number' || ranges.length <= rangeLimit) {
 		return ranges;
 	}
+	if (context && context.onRangeLimitExceeded) {
+		context.onRangeLimitExceeded(document.uri);
+	}
+	
 	let counts: number[] = [];
 	for (let level of nestingLevels) {
 		if (level < 30) {
