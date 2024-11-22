@@ -8,15 +8,47 @@ import { JSONSchema, JSONSchemaRef } from '../jsonSchema';
 import { isNumber, equals, isBoolean, isString, isDefined } from '../utils/objects';
 import { TextDocument, ASTNode, ObjectASTNode, ArrayASTNode, BooleanASTNode, NumberASTNode, StringASTNode, NullASTNode, PropertyASTNode, JSONPath, ErrorCode, Diagnostic, DiagnosticSeverity, Range } from '../jsonLanguageTypes';
 
-import { URI } from 'vscode-uri';
-import * as nls from 'vscode-nls';
+import Ajv from '@redocly/ajv/dist/2020';
 
-const localize = nls.loadMessageBundle();
+
+
+import { URI } from 'vscode-uri';
+// import * as nls from 'vscode-nls';
+
+// const localize = nls.loadMessageBundle();
 
 export interface IRange {
 	offset: number;
 	length: number;
 }
+
+function localize(key: string, message: string) {
+	return message;
+}
+
+// class Ajv {
+// 	constructor(pts: any) {}
+// 	compile(schema: any) {
+// 		return (data: any) => {
+// 			return true;
+// 		}
+// 	}
+// }
+
+const ajvStrict = new Ajv({
+  schemaId: '$id',
+  meta: true,
+  allErrors: true,
+  strictSchema: false,
+  inlineRefs: false,
+  validateSchema: false,
+  discriminator: true,
+  allowUnionTypes: true,
+  validateFormats: false, // TODO: fix it
+  logger: false,
+  verbose: true,
+  defaultUnevaluatedProperties: false,
+});
 
 const formats = {
 	'color-hex': { errorMessage: localize('colorHexFormatWarning', 'Invalid color format. Use #RGB, #RGBA, #RRGGBB or #RRGGBBAA.'), pattern: /^#([0-9A-Fa-f]{3,4}|([0-9A-Fa-f]{2}){3,4})$/},
@@ -348,23 +380,45 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 		return;
 	}
 
-	switch (node.type) {
-		case 'object':
-			_validateObjectNode(node, schema, validationResult, matchingSchemas);
-			break;
-		case 'array':
-			_validateArrayNode(node, schema, validationResult, matchingSchemas);
-			break;
-		case 'string':
-			_validateStringNode(node, schema, validationResult, matchingSchemas);
-			break;
-		case 'number':
-			_validateNumberNode(node, schema, validationResult, matchingSchemas);
-			break;
-		case 'property':
-			return validate(node.valueNode, schema, validationResult, matchingSchemas);
+	console.log('>>>>', getNodeValue(node));
+
+	const result = ajvStrict.validate(schema,  getNodeValue(node) );
+	console.log('>>>> !', result, ajvStrict.errors);
+
+	for (const error of ajvStrict.errors) {
+		console.log('>>>> error', error);
+		const problemNode = Json.findNodeAtLocation(node, error.instancePath.split('/').slice(1));
+
+		console.log('>>>> node', problemNode);
+		// const keyNode = (problemNode.parent as PropertyASTNode)?.keyNode;
+		const location =  { offset: problemNode.offset, length: problemNode.length };
+		validationResult.problems.push({
+			location,
+			severity: DiagnosticSeverity.Warning,
+			message: error.message,
+		});
 	}
-	_validateNode();
+
+
+
+
+	// switch (node.type) {
+	// 	case 'object':
+	// 		_validateObjectNode(node, schema, validationResult, matchingSchemas);
+	// 		break;
+	// 	case 'array':
+	// 		_validateArrayNode(node, schema, validationResult, matchingSchemas);
+	// 		break;
+	// 	case 'string':
+	// 		_validateStringNode(node, schema, validationResult, matchingSchemas);
+	// 		break;
+	// 	case 'number':
+	// 		_validateNumberNode(node, schema, validationResult, matchingSchemas);
+	// 		break;
+	// 	case 'property':
+	// 		return validate(node.valueNode, schema, validationResult, matchingSchemas);
+	// }
+	// _validateNode();
 
 	matchingSchemas.add({ node: node, schema: schema });
 
@@ -388,7 +442,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: schema.errorMessage || `Incorrect type. Expected "${schema.type}".` 
+					message: schema.errorMessage || `Incorrect type. Expected "${schema.type}".`
 				});
 			}
 		}
@@ -522,7 +576,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
 					code: ErrorCode.EnumValueMismatch,
-					message: schema.errorMessage || `Value is not accepted. Valid values: ${schema.enum.map(v => JSON.stringify(v)).join(', ')}.` 
+					message: schema.errorMessage || `Value is not accepted. Valid values: ${schema.enum.map(v => JSON.stringify(v)).join(', ')}.`
 				});
 			}
 		}
@@ -534,7 +588,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
 					code: ErrorCode.EnumValueMismatch,
-					message: schema.errorMessage || `Value must be ${JSON.stringify(schema.const)}.` 
+					message: schema.errorMessage || `Value must be ${JSON.stringify(schema.const)}.`
 				});
 				validationResult.enumValueMatch = false;
 			} else {
@@ -551,8 +605,6 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 			});
 		}
 	}
-
-
 
 	function _validateNumberNode(node: NumberASTNode, schema: JSONSchema, validationResult: ValidationResult, matchingSchemas: ISchemaCollector): void {
 		let val = node.value;
@@ -908,7 +960,7 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
-					message: `Object has fewer properties than the required number of ${schema.minProperties}` 
+					message: `Object has fewer properties than the required number of ${schema.minProperties}`
 				});
 			}
 		}

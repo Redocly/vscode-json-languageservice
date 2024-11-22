@@ -11,9 +11,13 @@ import * as Parser from '../parser/jsonParser';
 import { SchemaRequestService, WorkspaceContextService, PromiseConstructor, Thenable } from '../jsonLanguageTypes';
 
 
-import * as nls from 'vscode-nls';
+// import * as nls from 'vscode-nls';
 
-const localize = nls.loadMessageBundle();
+// const localize = nls.loadMessageBundle();
+
+function localize(key: string, message: string) {
+	return message;
+}
 
 export interface IJSONSchemaService {
 
@@ -274,7 +278,7 @@ export class JSONSchemaService implements IJSONSchemaService {
 		} catch (e) {
 			return id;
 		}
-		
+
 	}
 
 	public setSchemaContributions(schemaContributions: ISchemaContributions): void {

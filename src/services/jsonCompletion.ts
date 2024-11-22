@@ -18,8 +18,11 @@ import {
 	CompletionItem, CompletionItemKind, CompletionList, Position, Range, TextEdit, InsertTextFormat, MarkupContent, MarkupKind
 } from '../jsonLanguageTypes';
 
-import * as nls from 'vscode-nls';
-const localize = nls.loadMessageBundle();
+// import * as nls from 'vscode-nls';
+// const localize = nls.loadMessageBundle();
+function localize(key: string, message: string) {
+	return message;
+}
 
 const valueCommitCharacters = [',', '}', ']'];
 const propertyCommitCharacters = [':'];
@@ -230,8 +233,8 @@ export class JSONCompletion {
 						}
 
 						if (
-							typeof propertySchema === 'object' && 
-							!propertySchema.deprecationMessage && 
+							typeof propertySchema === 'object' &&
+							!propertySchema.deprecationMessage &&
 							!propertySchema.doNotSuggest &&
 							!readOnly
 						) {
@@ -691,7 +694,7 @@ export class JSONCompletion {
 	}
 
 	private getInsertTextForPlainText(text: string): string {
-		return text.replace(/[\\\$\}]/g, '\\$&');   // escape $, \ and } 
+		return text.replace(/[\\\$\}]/g, '\\$&');   // escape $, \ and }
 	}
 
 	private getInsertTextForValue(value: any, separatorAfter: string): string {

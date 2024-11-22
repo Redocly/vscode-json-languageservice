@@ -7,10 +7,11 @@ import { JSONSchemaService, ResolvedSchema, UnresolvedSchema } from './jsonSchem
 import { JSONDocument, IProblem } from '../parser/jsonParser';
 
 import { TextDocument, ObjectASTNode, ErrorCode, PromiseConstructor, Thenable, LanguageSettings, DocumentLanguageSettings, SeverityLevel, Diagnostic, DiagnosticSeverity, Range  } from '../jsonLanguageTypes';
-import * as nls from 'vscode-nls';
+// import * as nls from 'vscode-nls';
 
 import { JSONSchemaRef, JSONSchema } from '../jsonSchema';
 import { isDefined, isBoolean } from '../utils/objects';
+
 
 export class JSONValidation {
 
@@ -156,4 +157,4 @@ function toDiagnosticSeverity(severityLevel: SeverityLevel): DiagnosticSeverity 
 		case 'ignore': return void 0;
 	}
 	return void 0;
-}	
+}
