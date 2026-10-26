@@ -572,13 +572,5 @@ export class JSONSchemaService implements IJSONSchemaService {
 }
 
 function toDisplayString(url: string) {
-	try {
-		let uri = URI.parse(url);
-		if (uri.scheme === 'file') {
-			return uri.fsPath;
-		}
-	} catch (e) {
-		// ignore
-	}
 	return url;
 }
