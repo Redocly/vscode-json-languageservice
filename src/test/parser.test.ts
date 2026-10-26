@@ -1628,6 +1628,28 @@ suite('JSON Parser', () => {
 		}
 	});
 
+	test('multipleOf with a decimal step', function () {
+		const schema: JsonSchema.JSONSchema = {
+			type: 'array',
+			items: {
+				type: 'number',
+				multipleOf: 0.01
+			}
+		};
+		{
+			const { textDoc, jsonDoc } = toDocument('[1,2,19.99,100,0.07,1e2,-0.5]');
+			const semanticErrors = jsonDoc.validate(textDoc, schema);
+
+			assert.strictEqual(semanticErrors!.length, 0);
+		}
+		{
+			const { textDoc, jsonDoc } = toDocument('[1.005,0.001,1.00000000001]');
+			const semanticErrors = jsonDoc.validate(textDoc, schema);
+
+			assert.strictEqual(semanticErrors!.length, 3);
+		}
+	});
+
 	test('dependencies with array', function () {
 		let schema: JsonSchema.JSONSchema = {
 			type: 'object',
