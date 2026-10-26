@@ -500,8 +500,7 @@ export class JSONCompletion {
 				kind: this.getSuggestionKind(type),
 				label: this.getLabelForValue(value),
 				insertText: this.getInsertTextForValue(value, separatorAfter),
-				insertTextFormat: InsertTextFormat.Snippet,
-				detail: localize('json.suggest.default', 'Default value')
+				insertTextFormat: InsertTextFormat.Snippet
 			});
 			hasProposals = true;
 		}
