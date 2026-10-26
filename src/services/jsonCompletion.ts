@@ -18,9 +18,6 @@ import {
 	CompletionItem, CompletionItemKind, CompletionList, Position, Range, TextEdit, InsertTextFormat, MarkupContent, MarkupKind
 } from '../jsonLanguageTypes';
 
-import * as nls from 'vscode-nls';
-const localize = nls.loadMessageBundle();
-
 const valueCommitCharacters = [',', '}', ']'];
 const propertyCommitCharacters = [':'];
 

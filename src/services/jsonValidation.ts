@@ -7,7 +7,6 @@ import { JSONSchemaService, ResolvedSchema, UnresolvedSchema } from './jsonSchem
 import { JSONDocument, IProblem } from '../parser/jsonParser';
 
 import { TextDocument, ObjectASTNode, ErrorCode, PromiseConstructor, Thenable, LanguageSettings, DocumentLanguageSettings, SeverityLevel, Diagnostic, DiagnosticSeverity, Range  } from '../jsonLanguageTypes';
-import * as nls from 'vscode-nls';
 
 import { JSONSchemaRef, JSONSchema } from '../jsonSchema';
 import { isDefined, isBoolean } from '../utils/objects';

@@ -10,11 +10,6 @@ import * as Strings from '../utils/strings';
 import * as Parser from '../parser/jsonParser';
 import { SchemaRequestService, WorkspaceContextService, PromiseConstructor, Thenable } from '../jsonLanguageTypes';
 
-
-import * as nls from 'vscode-nls';
-
-const localize = nls.loadMessageBundle();
-
 export interface IJSONSchemaService {
 
 	/**
@@ -393,9 +388,9 @@ export class JSONSchemaService implements IJSONSchemaService {
 		if (schema.$schema) {
 			const id = this.normalizeId(schema.$schema);
 			if (id === 'http://json-schema.org/draft-03/schema') {
-				return this.promise.resolve(new ResolvedSchema({}, [ localize('json.schema.draft03.notsupported', "Draft-03 schemas are not supported.") ]));
+				return this.promise.resolve(new ResolvedSchema({}, [ "Draft-03 schemas are not supported." ]));
 			} else if (id === 'https://json-schema.org/draft/2019-09/schema') {
-				schemaToResolve.errors.push(localize('json.schema.draft201909.notsupported', "Draft 2019-09 schemas are not yet fully supported."));
+				schemaToResolve.errors.push("Draft 2019-09 schemas are not yet fully supported.");
 			}
 		}
 
