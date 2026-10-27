@@ -9,9 +9,6 @@ import { isNumber, equals, isBoolean, isString, isDefined } from '../utils/objec
 import { TextDocument, ASTNode, ObjectASTNode, ArrayASTNode, BooleanASTNode, NumberASTNode, StringASTNode, NullASTNode, PropertyASTNode, JSONPath, ErrorCode, Diagnostic, DiagnosticSeverity, Range } from '../jsonLanguageTypes';
 
 import { URI } from 'vscode-uri';
-import * as nls from 'vscode-nls';
-
-const localize = nls.loadMessageBundle();
 
 export interface IRange {
 	offset: number;
@@ -19,11 +16,11 @@ export interface IRange {
 }
 
 const formats = {
-	'color-hex': { errorMessage: localize('colorHexFormatWarning', 'Invalid color format. Use #RGB, #RGBA, #RRGGBB or #RRGGBBAA.'), pattern: /^#([0-9A-Fa-f]{3,4}|([0-9A-Fa-f]{2}){3,4})$/},
-	'date-time': { errorMessage: localize('dateTimeFormatWarning', 'String is not a RFC3339 date-time.'), pattern: /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]|60)(\.[0-9]+)?(Z|(\+|-)([01][0-9]|2[0-3]):([0-5][0-9]))$/i },
-	'date': { errorMessage: localize('dateFormatWarning', 'String is not a RFC3339 date.'), pattern: /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/i },
-	'time': { errorMessage: localize('timeFormatWarning', 'String is not a RFC3339 time.'), pattern: /^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]|60)(\.[0-9]+)?(Z|(\+|-)([01][0-9]|2[0-3]):([0-5][0-9]))$/i },
-	'email': { errorMessage: localize('emailFormatWarning', 'String is not an e-mail address.'), pattern: /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/ }
+	'color-hex': { errorMessage: 'Invalid color format. Use #RGB, #RGBA, #RRGGBB or #RRGGBBAA.', pattern: /^#([0-9A-Fa-f]{3,4}|([0-9A-Fa-f]{2}){3,4})$/},
+	'date-time': { errorMessage: 'String is not a RFC3339 date-time.', pattern: /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]|60)(\.[0-9]+)?(Z|(\+|-)([01][0-9]|2[0-3]):([0-5][0-9]))$/i },
+	'date': { errorMessage: 'String is not a RFC3339 date.', pattern: /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/i },
+	'time': { errorMessage: 'String is not a RFC3339 time.', pattern: /^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]|60)(\.[0-9]+)?(Z|(\+|-)([01][0-9]|2[0-3]):([0-5][0-9]))$/i },
+	'email': { errorMessage: 'String is not an e-mail address.', pattern: /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/ }
 };
 
 export interface IProblem {
@@ -557,8 +554,31 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 	function _validateNumberNode(node: NumberASTNode, schema: JSONSchema, validationResult: ValidationResult, matchingSchemas: ISchemaCollector): void {
 		let val = node.value;
 
+		function normalizeFloats(float: number): { value: number, multiplier: number } | null {
+			const parts = /^(-?\d+)(?:\.(\d+))?(?:e([-+]\d+))?$/.exec(float.toString());
+			return parts && {
+				value: Number(parts[1] + (parts[2] || '')),
+				multiplier: (parts[2] ? parts[2].length : 0) - (parseInt(parts[3]) || 0)
+			};
+		}
 		if (isNumber(schema.multipleOf)) {
-			if (val % schema.multipleOf !== 0) {
+			let remainder: number = -1;
+			if (Number.isInteger(schema.multipleOf)) {
+				remainder = val % schema.multipleOf;
+			} else {
+				let normMultipleOf = normalizeFloats(schema.multipleOf);
+				let normValue = normalizeFloats(val);
+				if (normMultipleOf && normValue) {
+					const multiplier = 10 ** Math.abs(normValue.multiplier - normMultipleOf.multiplier);
+					if (normValue.multiplier < normMultipleOf.multiplier) {
+						normValue.value *= multiplier;
+					} else {
+						normMultipleOf.value *= multiplier;
+					}
+					remainder = normValue.value % normMultipleOf.value;
+				}
+			}
+			if (remainder !== 0) {
 				validationResult.problems.push({
 					location: { offset: node.offset, length: node.length },
 					severity: DiagnosticSeverity.Warning,
@@ -653,9 +673,9 @@ function validate(node: ASTNode, schema: JSONSchema, validationResult: Validatio
 					} else {
 						const match = /^(([^:/?#]+?):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/.exec(node.value);
 						if (!match) {
-							errorMessage = localize('uriMissing', 'URI is expected.');
+							errorMessage = 'URI is expected.';
 						} else if (!match[2] && schema.format === 'uri') {
-							errorMessage = localize('uriSchemeMissing', 'URI with a scheme is expected.');
+							errorMessage = 'URI with a scheme is expected.';
 						}
 					}
 					if (errorMessage) {
@@ -1217,7 +1237,7 @@ export function parse(textDocument: TextDocument, config?: JSONDocumentConfig): 
 			try {
 				let numberValue = JSON.parse(tokenValue);
 				if (!isNumber(numberValue)) {
-					return _error(localize('InvalidNumberFormat', 'Invalid number format.'), ErrorCode.Undefined, node);
+					return _error('Invalid number format.', ErrorCode.Undefined, node);
 				}
 				node.value = numberValue;
 			} catch (e) {

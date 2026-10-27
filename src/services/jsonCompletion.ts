@@ -18,9 +18,6 @@ import {
 	CompletionItem, CompletionItemKind, CompletionList, Position, Range, TextEdit, InsertTextFormat, MarkupContent, MarkupKind
 } from '../jsonLanguageTypes';
 
-import * as nls from 'vscode-nls';
-const localize = nls.loadMessageBundle();
-
 const valueCommitCharacters = [',', '}', ']'];
 const propertyCommitCharacters = [':'];
 
@@ -500,8 +497,7 @@ export class JSONCompletion {
 				kind: this.getSuggestionKind(type),
 				label: this.getLabelForValue(value),
 				insertText: this.getInsertTextForValue(value, separatorAfter),
-				insertTextFormat: InsertTextFormat.Snippet,
-				detail: localize('json.suggest.default', 'Default value')
+				insertTextFormat: InsertTextFormat.Snippet
 			});
 			hasProposals = true;
 		}

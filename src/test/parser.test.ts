@@ -1593,6 +1593,63 @@ suite('JSON Parser', () => {
 		}
 	});
 
+	test('multipleOf with floats', function () {
+		let schema: JsonSchema.JSONSchema = {
+			type: 'array',
+			items: {
+				type: 'number',
+				multipleOf: 2e-4
+			}
+		};
+		{
+			const { textDoc, jsonDoc } = toDocument('[0.0002,0.2,0.64,2e+6,2.2e+10]');
+			const semanticErrors = jsonDoc.validate(textDoc, schema);
+
+			assert.strictEqual(semanticErrors!.length, 0);
+		}
+		{
+			const { textDoc, jsonDoc } = toDocument('[2e-5,2e-10,1e-4]');
+			const semanticErrors = jsonDoc.validate(textDoc, schema);
+
+			assert.strictEqual(semanticErrors!.length, 3);
+		}
+		schema = {
+			type: 'array',
+			items: {
+				type: 'number',
+				multipleOf: 2.000000001
+			}
+		};
+		{
+			const { textDoc, jsonDoc } = toDocument('[2.000000001e5,6.000000003e8]');
+			const semanticErrors = jsonDoc.validate(textDoc, schema);
+
+			assert.strictEqual(semanticErrors!.length, 0);
+		}
+	});
+
+	test('multipleOf with a decimal step', function () {
+		const schema: JsonSchema.JSONSchema = {
+			type: 'array',
+			items: {
+				type: 'number',
+				multipleOf: 0.01
+			}
+		};
+		{
+			const { textDoc, jsonDoc } = toDocument('[1,2,19.99,100,0.07,1e2,-0.5]');
+			const semanticErrors = jsonDoc.validate(textDoc, schema);
+
+			assert.strictEqual(semanticErrors!.length, 0);
+		}
+		{
+			const { textDoc, jsonDoc } = toDocument('[1.005,0.001,1.00000000001]');
+			const semanticErrors = jsonDoc.validate(textDoc, schema);
+
+			assert.strictEqual(semanticErrors!.length, 3);
+		}
+	});
+
 	test('dependencies with array', function () {
 		let schema: JsonSchema.JSONSchema = {
 			type: 'object',
